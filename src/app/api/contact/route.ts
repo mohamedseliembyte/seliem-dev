@@ -2,8 +2,6 @@ import { Resend } from 'resend'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 // Routing — all destinations come from env vars, nothing hardcoded
 const FROM_ADDRESS = process.env.FROM_EMAIL        ?? 'onboarding@resend.dev'
 const CONTACT_TO   = process.env.CONTACT_TO_EMAIL  ?? 'mohamed.seliem.dev@gmail.com'
@@ -33,6 +31,8 @@ function esc(s: unknown): string {
 }
 
 export async function POST(req: NextRequest) {
+  const resend = new Resend(process.env.RESEND_API_KEY)
+
   // Rate limiting
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
   if (isRateLimited(ip)) {
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
     await resend.emails.send({
       from:     FROM_ADDRESS,
       to:       toAddress,
-      reply_to: esc(email) as string,
+      reply_to: email as string,
       subject,
       html: notifyHtml,
     })
@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[contact] Resend error:', message)
     return NextResponse.json(
-      { error: 'Failed to send email.', detail: message },
+      { error: 'Failed to send email.' },
       { status: 500 },
     )
   }
