@@ -27,6 +27,7 @@ export default function AdminPage() {
   const [session, setSession] = useState<Session | null>(null)
   const [leads, setLeads] = useState<Lead[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [authError, setAuthError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Lead | null>(null)
 
   const loadLeads = useCallback(async (token: string) => {
@@ -50,17 +51,56 @@ export default function AdminPage() {
   }, [])
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    let mounted = true
+
+    async function init() {
+      const url = new URL(window.location.href)
+      const code = url.searchParams.get('code')
+      const errDesc =
+        url.searchParams.get('error_description') ??
+        new URLSearchParams(url.hash.replace(/^#/, '')).get('error_description')
+
+      // OAuth provider returned an error
+      if (errDesc) {
+        if (mounted) {
+          setAuthError(decodeURIComponent(errDesc))
+          setLoading(false)
+        }
+        return
+      }
+
+      // Exchange the ?code= for a session, then clean the URL
+      if (code) {
+        const { error: exErr } = await supabase.auth.exchangeCodeForSession(code)
+        window.history.replaceState({}, '', '/admin')
+        if (exErr) {
+          if (mounted) {
+            setAuthError(exErr.message)
+            setLoading(false)
+          }
+          return
+        }
+      }
+
+      const { data } = await supabase.auth.getSession()
+      if (!mounted) return
       setSession(data.session)
       setLoading(false)
       if (data.session) loadLeads(data.session.access_token)
-    })
+    }
+
+    init()
+
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      if (!mounted) return
       setSession(s)
       if (s) loadLeads(s.access_token)
       else setLeads([])
     })
-    return () => sub.subscription.unsubscribe()
+    return () => {
+      mounted = false
+      sub.subscription.unsubscribe()
+    }
   }, [supabase, loadLeads])
 
   const signIn = () =>
@@ -92,6 +132,9 @@ export default function AdminPage() {
           <button onClick={signIn} style={styles.googleBtn}>
             <span style={{ fontWeight: 600 }}>Sign in with Google</span>
           </button>
+          {authError && (
+            <p style={{ color: '#f88', marginTop: 16, fontSize: 13, lineHeight: 1.4 }}>{authError}</p>
+          )}
         </div>
       </div>
     )

@@ -16,7 +16,7 @@ export function getSupabaseBrowser(): SupabaseClient {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true,
+        detectSessionInUrl: false, // we exchange the code manually in /admin
         flowType: 'pkce',
       },
     },
