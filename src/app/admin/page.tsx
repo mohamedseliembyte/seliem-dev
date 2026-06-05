@@ -110,7 +110,7 @@ export default function AdminPage() {
   const signIn = async () => {
     try {
       const gUser = await googlePopupSignIn()
-      const { error } = await exchangeGoogleToken(supabase, gUser.idToken)
+      const { error } = await exchangeGoogleToken(supabase, gUser.idToken, gUser.nonce)
       if (error) setAuthError(String((error as { message?: string }).message ?? error))
     } catch (err) {
       // Popup blocked or dismissed → fall back to redirect

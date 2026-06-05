@@ -62,7 +62,7 @@ export default function AccountPage() {
   const signIn = async () => {
     try {
       const g = await googlePopupSignIn()
-      const { error } = await exchangeGoogleToken(supabase, g.idToken)
+      const { error } = await exchangeGoogleToken(supabase, g.idToken, g.nonce)
       if (error) setAuthError(String((error as { message?: string }).message ?? error))
     } catch (e) {
       if (e instanceof Error && e.message === 'popup_blocked') {
