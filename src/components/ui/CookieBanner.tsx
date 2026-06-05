@@ -43,9 +43,7 @@ export default function CookieBanner() {
       <p className="text-[13px] text-gray-300 leading-relaxed mb-3">
         We use cookies to analyze site traffic and improve your experience.{' '}
         <a
-          href="https://policies.google.com/privacy"
-          target="_blank"
-          rel="noopener noreferrer"
+          href="/privacy"
           className="text-[#c9a84c] underline underline-offset-2 hover:text-[#f5d485] transition-colors"
         >
           Learn more

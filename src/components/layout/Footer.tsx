@@ -102,7 +102,14 @@ export default function Footer() {
           <p className="text-xs text-gray-600">
             © 2025 Seliem.dev. All rights reserved.
           </p>
-          <p className="text-xs text-gray-700">Built by Seliem.dev</p>
+          <div className="flex items-center gap-5">
+            <Link href="/privacy" className="text-xs text-gray-500 hover:text-[#c9a84c] transition-colors">
+              Privacy Policy
+            </Link>
+            <Link href="/terms" className="text-xs text-gray-500 hover:text-[#c9a84c] transition-colors">
+              Terms of Service
+            </Link>
+          </div>
         </div>
       </div>
     </footer>
