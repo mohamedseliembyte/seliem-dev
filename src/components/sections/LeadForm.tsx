@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { CheckCircle, AlertCircle, Loader2, Send, X } from 'lucide-react'
+import { CheckCircle, AlertCircle, Loader2, Send, X, Sparkles } from 'lucide-react'
 import type { ContactFormData, FormStatus } from '@/types'
 
 const budgetOptions = [
@@ -440,6 +440,21 @@ export default function LeadForm() {
                           Send Message
                         </>
                       )}
+                    </button>
+
+                    {/* Chat with a rep instead */}
+                    <div className="mt-4 flex items-center gap-3">
+                      <span className="h-px flex-1 bg-white/10" />
+                      <span className="text-xs text-gray-600">or</span>
+                      <span className="h-px flex-1 bg-white/10" />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => window.dispatchEvent(new Event('open-chat'))}
+                      className="mt-4 w-full flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-semibold text-[#c9a84c] border border-[#c9a84c]/40 hover:bg-[#c9a84c]/10 active:scale-[0.99] transition-all duration-200"
+                    >
+                      <Sparkles className="w-4 h-4" aria-hidden="true" />
+                      Chat with a rep now
                     </button>
                   </form>
                 )}

@@ -46,6 +46,13 @@ export default function ChatWidget() {
     return () => clearTimeout(t)
   }, [isAdmin])
 
+  // Allow any part of the site to open the chat: window.dispatchEvent(new Event('open-chat'))
+  useEffect(() => {
+    const openChat = () => { setVisible(true); setOpen(true) }
+    window.addEventListener('open-chat', openChat)
+    return () => window.removeEventListener('open-chat', openChat)
+  }, [])
+
   // Load saved user on mount
   useEffect(() => {
     const saved = getSavedUser()
