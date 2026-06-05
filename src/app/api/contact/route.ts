@@ -2,6 +2,7 @@ import { Resend } from 'resend'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { notifyLead } from '@/lib/telegram'
+import { saveLead } from '@/lib/supabase'
 
 // Routing — all destinations come from env vars, nothing hardcoded
 const FROM_ADDRESS = process.env.FROM_EMAIL        ?? 'onboarding@resend.dev'
@@ -144,6 +145,19 @@ export async function POST(req: NextRequest) {
           <p style="margin:0;color:#888;font-size:13px">— The Seliem.dev Team</p>
         </div>
       `,
+    })
+
+    // Persist the lead to the database (non-blocking — never breaks the form)
+    await saveLead({
+      type: isSupport ? 'support' : 'contact',
+      name: String(name),
+      email: String(email),
+      message: String(message),
+      phone: String(phone),
+      business_name: String(businessName),
+      business_type: String(businessType),
+      budget: budget ? String(budget) : null,
+      goals: goals ? String(goals) : null,
     })
 
     // Ping Telegram with the lead (non-blocking — never breaks the form)
