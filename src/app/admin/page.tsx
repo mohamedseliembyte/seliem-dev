@@ -41,6 +41,20 @@ type ChatMessage = {
   created_at: string
 }
 
+type Payment = {
+  id: string
+  lead_id: string
+  description: string
+  amount: number
+  currency: string
+  status: string
+  created_at: string
+  paid_at: string | null
+}
+
+// Your PayPal.Me handle (set NEXT_PUBLIC_PAYPAL_HANDLE in env)
+const PAYPAL_HANDLE = process.env.NEXT_PUBLIC_PAYPAL_HANDLE || ''
+
 const GOLD = '#c9a84c'
 const STATUSES = ['new', 'contacted', 'qualified', 'won', 'lost'] as const
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
@@ -65,6 +79,7 @@ export default function AdminPage() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [payments, setPayments] = useState<Payment[]>([])
   const [error, setError] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Lead | null>(null)
@@ -82,6 +97,7 @@ export default function AdminPage() {
       setLeads(data.leads ?? [])
       setConversations(data.conversations ?? [])
       setMessages(data.messages ?? [])
+      setPayments(data.payments ?? [])
     } catch { setError('Network error.') }
   }, [])
 
@@ -139,6 +155,41 @@ export default function AdminPage() {
   // Get conversations linked to a lead
   const getLeadConversations = (leadId: string) => conversations.filter((c) => c.lead_id === leadId)
   const getConvoMessages = (convoId: string) => messages.filter((m) => m.conversation_id === convoId)
+  const getLeadPayments = (leadId: string) => payments.filter((p) => p.lead_id === leadId)
+
+  // ── Payments ───────────────────────────────────────────────────────────────
+  const [payDesc, setPayDesc] = useState('')
+  const [payAmount, setPayAmount] = useState('')
+
+  const createPayment = async (leadId: string) => {
+    if (!session || !payDesc.trim() || !Number(payAmount)) return
+    try {
+      const res = await fetch('/api/admin/payments', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead_id: leadId, description: payDesc.trim(), amount: Number(payAmount) }),
+      })
+      const data = await res.json()
+      if (data.payment) {
+        setPayments((p) => [data.payment, ...p])
+        setPayDesc(''); setPayAmount('')
+      }
+    } catch { /* ignore */ }
+  }
+
+  const setPaymentStatus = async (id: string, status: string) => {
+    if (!session) return
+    try {
+      await fetch('/api/admin/payments', {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status }),
+      })
+      setPayments((p) => p.map((x) => x.id === id ? { ...x, status, paid_at: status === 'paid' ? new Date().toISOString() : null } : x))
+    } catch { /* ignore */ }
+  }
+
+  const payLink = (amount: number) => PAYPAL_HANDLE ? `https://paypal.me/${PAYPAL_HANDLE}/${amount}` : ''
 
   // ── Live reply (human takeover) ──────────────────────────────────────────
   const [replyText, setReplyText] = useState('')
@@ -357,6 +408,38 @@ export default function AdminPage() {
                     <a href={`https://wa.me/${selected.phone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" style={s.actionBtn}>💬 WhatsApp</a>
                   )}
                   <a href={`tel:${selected.phone}`} target="_blank" rel="noreferrer" style={{...s.actionBtn, ...((!selected.phone || selected.phone === 'N/A') ? {opacity: 0.3, pointerEvents: 'none' as const} : {})}}>📞 Call</a>
+                </div>
+
+                {/* ── Payments ── */}
+                <div style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid #222' }}>
+                  <div style={{ ...s.fieldLabel, marginBottom: 10 }}>💳 Payments</div>
+
+                  {getLeadPayments(selected.id).map((p) => (
+                    <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 12px', background: '#141414', border: '1px solid #222', borderRadius: 10, marginBottom: 8 }}>
+                      <div>
+                        <div style={{ color: '#eee', fontSize: 14 }}>${Number(p.amount).toLocaleString()} <span style={{ color: '#888', fontSize: 12 }}>· {p.description}</span></div>
+                        <div style={{ marginTop: 4 }}>
+                          <span style={{ ...s.smallBadge, background: p.status === 'paid' ? '#1a2a1a' : p.status === 'canceled' ? '#2a1414' : '#2a2a14', color: p.status === 'paid' ? '#4d4' : p.status === 'canceled' ? '#d66' : GOLD }}>{p.status}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {payLink(p.amount) && (
+                          <button onClick={() => navigator.clipboard?.writeText(payLink(p.amount))} title="Copy PayPal link" style={{ ...s.actionBtn, padding: '6px 10px', fontSize: 12, cursor: 'pointer' }}>🔗 Copy link</button>
+                        )}
+                        {p.status !== 'paid'
+                          ? <button onClick={() => setPaymentStatus(p.id, 'paid')} style={{ ...s.actionBtn, padding: '6px 10px', fontSize: 12, cursor: 'pointer', background: '#1a2a1a', color: '#4d4', border: '1px solid #2a4a2a' }}>✓ Mark paid</button>
+                          : <button onClick={() => setPaymentStatus(p.id, 'pending')} style={{ ...s.actionBtn, padding: '6px 10px', fontSize: 12, cursor: 'pointer' }}>↺ Unpay</button>}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Create payment request */}
+                  <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                    <input value={payDesc} onChange={(e) => setPayDesc(e.target.value)} placeholder="What for (e.g. Deposit)" style={{ flex: 2, padding: '8px 10px', background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, color: '#eee', fontSize: 13 }} />
+                    <input value={payAmount} onChange={(e) => setPayAmount(e.target.value)} placeholder="$" type="number" style={{ width: 80, padding: '8px 10px', background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, color: '#eee', fontSize: 13 }} />
+                    <button onClick={() => createPayment(selected.id)} disabled={!payDesc.trim() || !Number(payAmount)} style={{ ...s.actionBtn, background: GOLD, color: '#000', border: 'none', padding: '8px 14px', fontSize: 13, cursor: 'pointer', opacity: (!payDesc.trim() || !Number(payAmount)) ? 0.4 : 1 }}>Request</button>
+                  </div>
+                  {!PAYPAL_HANDLE && <p style={{ color: '#a66', fontSize: 11, marginTop: 6 }}>⚠️ Set your PayPal.Me handle to generate pay links.</p>}
                 </div>
               </div>
             ) : (

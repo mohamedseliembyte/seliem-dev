@@ -64,10 +64,18 @@ export async function GET(req: NextRequest) {
     messages = msgs ?? []
   }
 
+  // Payments
+  const { data: payments } = await supabase
+    .from('payments')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(500)
+
   return NextResponse.json({
     leads: leads ?? [],
     conversations: conversations ?? [],
     messages,
+    payments: payments ?? [],
     admin: auth,
   })
 }

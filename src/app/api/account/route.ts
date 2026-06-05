@@ -51,10 +51,22 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Their payments
+  let payments: unknown[] = []
+  if (leadIds.length > 0) {
+    const { data: pays } = await supabase
+      .from('payments')
+      .select('id, lead_id, description, amount, currency, status, created_at, paid_at')
+      .in('lead_id', leadIds)
+      .order('created_at', { ascending: false })
+    payments = pays ?? []
+  }
+
   return NextResponse.json({
     user: { email, name: userData.user.user_metadata?.full_name ?? userData.user.user_metadata?.name ?? '', picture: userData.user.user_metadata?.avatar_url ?? userData.user.user_metadata?.picture ?? '' },
     leads: leads ?? [],
     conversations,
     messages,
+    payments,
   })
 }

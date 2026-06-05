@@ -20,8 +20,10 @@ type Lead = {
 }
 type Convo = { id: string; status: string; summary: string | null; created_at: string }
 type Msg = { conversation_id: string; role: string; content: string; created_at: string }
+type Payment = { id: string; lead_id: string; description: string; amount: number; status: string; created_at: string }
 
 const GOLD = '#c9a84c'
+const PAYPAL_HANDLE = process.env.NEXT_PUBLIC_PAYPAL_HANDLE || ''
 const STATUS_LABEL: Record<string, string> = {
   new: 'Received', contacted: 'In touch', qualified: 'In discussion', won: 'Active client', lost: 'Closed',
 }
@@ -30,7 +32,7 @@ export default function AccountPage() {
   const supabase = getSupabaseBrowser()
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState<Session | null>(null)
-  const [data, setData] = useState<{ leads: Lead[]; conversations: Convo[]; messages: Msg[] } | null>(null)
+  const [data, setData] = useState<{ leads: Lead[]; conversations: Convo[]; messages: Msg[]; payments?: Payment[] } | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
 
   const load = useCallback(async (token: string) => {
@@ -125,6 +127,38 @@ export default function AccountPage() {
                 </div>
               </div>
             ))}
+
+            {(data?.payments ?? []).length > 0 && (
+              <>
+                <h2 className="pt-4 text-xs font-semibold uppercase tracking-widest text-gray-600">Your Payments</h2>
+                {(data?.payments ?? []).map((p) => (
+                  <div key={p.id} className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#141414] p-5">
+                    <div>
+                      <div className="text-lg font-semibold text-white">${Number(p.amount).toLocaleString()}</div>
+                      <div className="text-sm text-gray-400">{p.description}</div>
+                    </div>
+                    <div className="text-right">
+                      {p.status === 'paid' ? (
+                        <span className="rounded-full bg-[#1a2a1a] px-3 py-1 text-xs font-semibold text-green-400">✓ Paid</span>
+                      ) : p.status === 'canceled' ? (
+                        <span className="rounded-full bg-[#2a1414] px-3 py-1 text-xs font-semibold text-red-400">Canceled</span>
+                      ) : PAYPAL_HANDLE ? (
+                        <a
+                          href={`https://paypal.me/${PAYPAL_HANDLE}/${p.amount}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-block rounded-xl bg-[#c9a84c] px-4 py-2 text-sm font-semibold text-black transition hover:bg-[#f5d485]"
+                        >
+                          Pay with PayPal
+                        </a>
+                      ) : (
+                        <span className="rounded-full bg-[#2a2a14] px-3 py-1 text-xs font-semibold" style={{ color: GOLD }}>Pending</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
 
             {convosFor().length > 0 && (
               <>
