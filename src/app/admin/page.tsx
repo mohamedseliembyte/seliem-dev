@@ -140,6 +140,51 @@ export default function AdminPage() {
   const getLeadConversations = (leadId: string) => conversations.filter((c) => c.lead_id === leadId)
   const getConvoMessages = (convoId: string) => messages.filter((m) => m.conversation_id === convoId)
 
+  // ── Live reply (human takeover) ──────────────────────────────────────────
+  const [replyText, setReplyText] = useState('')
+  const [sendingReply, setSendingReply] = useState(false)
+
+  const sendReply = async (conversationId: string) => {
+    const content = replyText.trim()
+    if (!content || !session || sendingReply) return
+    setSendingReply(true)
+    try {
+      const res = await fetch('/api/admin/reply', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversation_id: conversationId, content }),
+      })
+      if (res.ok) {
+        setMessages((prev) => [...prev, { conversation_id: conversationId, role: 'human', content, created_at: new Date().toISOString() }])
+        setReplyText('')
+      }
+    } catch { /* ignore */ }
+    setSendingReply(false)
+  }
+
+  // Poll the open conversation for new visitor messages (live chat)
+  useEffect(() => {
+    if (!selected || tab !== 'chat') return
+    const convos = conversations.filter((c) => c.lead_id === selected.id)
+    if (convos.length === 0) return
+    const id = setInterval(async () => {
+      for (const c of convos) {
+        try {
+          const res = await fetch(`/api/chat/messages?session_id=${encodeURIComponent(c.session_id)}`)
+          const data = await res.json()
+          if (data.messages) {
+            setMessages((prev) => {
+              const others = prev.filter((m) => m.conversation_id !== c.id)
+              const fresh = data.messages.map((m: { role: string; content: string; created_at: string }) => ({ ...m, conversation_id: c.id }))
+              return [...others, ...fresh]
+            })
+          }
+        } catch { /* ignore */ }
+      }
+    }, 4000)
+    return () => clearInterval(id)
+  }, [selected, tab, conversations])
+
   const filtered = filter === 'all' ? leads : leads.filter((l) => l.status === filter)
 
   /* ── Loading ─────────────────────────────────────────────────────────────── */
@@ -332,19 +377,42 @@ export default function AdminPage() {
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           {msgs.map((m, i) => (
-                            <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                            <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-start' : 'flex-end' }}>
                               <div style={{
                                 maxWidth: '85%', padding: '8px 12px', borderRadius: 12, fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap',
                                 ...(m.role === 'user'
-                                  ? { background: GOLD, color: '#000', borderBottomRightRadius: 4 }
-                                  : { background: '#1c1c1c', color: '#ddd', borderBottomLeftRadius: 4 }),
+                                  ? { background: '#1c1c1c', color: '#ddd', borderBottomLeftRadius: 4 }
+                                  : m.role === 'human'
+                                  ? { background: '#2a4a2a', color: '#dfd', borderBottomRightRadius: 4 }
+                                  : { background: GOLD, color: '#000', borderBottomRightRadius: 4 }),
                               }}>
+                                {m.role === 'human' && <div style={{ fontSize: 10, opacity: 0.7, marginBottom: 2 }}>You</div>}
+                                {m.role === 'assistant' && <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 2 }}>🤖 Sage</div>}
                                 {m.content}
                               </div>
                             </div>
                           ))}
                         </div>
                         {msgs.length === 0 && <p style={{ color: '#555', fontSize: 13 }}>No messages recorded.</p>}
+
+                        {/* Live reply box — jump in as a human */}
+                        <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
+                          <input
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') sendReply(convo.id) }}
+                            placeholder="Jump in and reply live…"
+                            style={{ flex: 1, padding: '10px 12px', background: '#0a0a0a', border: '1px solid #2a2a2a', borderRadius: 10, color: '#eee', fontSize: 13 }}
+                          />
+                          <button
+                            onClick={() => sendReply(convo.id)}
+                            disabled={sendingReply || !replyText.trim()}
+                            style={{ ...s.actionBtn, background: GOLD, color: '#000', border: 'none', opacity: sendingReply || !replyText.trim() ? 0.4 : 1, cursor: 'pointer' }}
+                          >
+                            Send
+                          </button>
+                        </div>
+                        <p style={{ color: '#666', fontSize: 11, marginTop: 6 }}>Sending a reply takes over the chat — Sage pauses and the visitor talks to you live.</p>
                       </div>
                     )
                   })

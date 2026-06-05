@@ -98,6 +98,14 @@ export async function POST(req: NextRequest) {
     // Save the incoming user message
     await supabase.from('messages').insert({ conversation_id: conversationId, role: 'user', content: message })
 
+    // ── Human takeover: if a rep has joined, pause the AI ───────────────────
+    const humanActive = (history ?? []).some((m) => m.role === 'human')
+    if (humanActive) {
+      // Alert the rep that the visitor replied, and let polling deliver the rep's response
+      void sendTelegramMessage(`💬 <b>Visitor replied in live chat:</b>\n${message}`)
+      return NextResponse.json({ reply: null, human: true })
+    }
+
     // ── Build the prompt ────────────────────────────────────────────────────
     // If the user signed in with Google, tell Sage so it skips asking for name/email
     let systemAddendum = ''

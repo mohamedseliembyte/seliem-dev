@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { X, Send, Sparkles, LogIn } from 'lucide-react'
 import { googlePopupSignIn, type GoogleUser } from '@/lib/google-auth'
 
-type Msg = { role: 'user' | 'assistant'; content: string }
+type Msg = { role: 'user' | 'assistant' | 'rep'; content: string }
 
 const GREETING =
   "Hi! 👋 I'm Sage, the Seliem.dev assistant. Looking for a website, an AI automation, or both? Tell me a bit about your project and I'll help you get started."
@@ -38,7 +38,9 @@ export default function ChatWidget() {
   const [sending, setSending] = useState(false)
   const [user, setUser] = useState<GoogleUser | null>(null)
   const [signingIn, setSigningIn] = useState(false)
+  const [repActive, setRepActive] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const lastPollRef = useRef<string>(new Date().toISOString())
 
   useEffect(() => {
     if (isAdmin) return
@@ -52,6 +54,28 @@ export default function ChatWidget() {
     window.addEventListener('open-chat', openChat)
     return () => window.removeEventListener('open-chat', openChat)
   }, [])
+
+  // Poll for live rep replies while the chat is open
+  useEffect(() => {
+    if (!open) return
+    const sid = getSessionId()
+    const tick = async () => {
+      try {
+        const res = await fetch(`/api/chat/messages?session_id=${encodeURIComponent(sid)}&after=${encodeURIComponent(lastPollRef.current)}`)
+        const data = await res.json()
+        if (data.human) setRepActive(true)
+        const newReps = (data.messages ?? []).filter((m: { role: string }) => m.role === 'human')
+        if (newReps.length > 0) {
+          setMessages((m) => [...m, ...newReps.map((r: { content: string }) => ({ role: 'rep' as const, content: r.content }))])
+        }
+        if ((data.messages ?? []).length > 0) {
+          lastPollRef.current = data.messages[data.messages.length - 1].created_at
+        }
+      } catch { /* ignore */ }
+    }
+    const id = setInterval(tick, 4000)
+    return () => clearInterval(id)
+  }, [open])
 
   // Load saved user on mount
   useEffect(() => {
@@ -96,7 +120,12 @@ export default function ChatWidget() {
         }),
       })
       const data = await res.json()
-      setMessages((m) => [...m, { role: 'assistant', content: data.reply ?? 'Sorry, something went wrong.' }])
+      if (data.human || data.reply === null) {
+        // A human rep has taken over — their reply arrives via polling
+        setRepActive(true)
+      } else {
+        setMessages((m) => [...m, { role: 'assistant', content: data.reply ?? 'Sorry, something went wrong.' }])
+      }
     } catch {
       setMessages((m) => [
         ...m,
@@ -170,11 +199,14 @@ export default function ChatWidget() {
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
           {messages.map((m, i) => (
-            <div key={i} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
+            <div key={i} className={m.role === 'user' ? 'flex justify-end' : 'flex flex-col items-start'}>
+              {m.role === 'rep' && <span className="mb-0.5 ml-1 text-[10px] font-medium text-[#c9a84c]">Seliem.dev team</span>}
               <div
                 className={
                   m.role === 'user'
                     ? 'max-w-[80%] rounded-2xl rounded-br-sm bg-[#c9a84c] px-3.5 py-2 text-sm text-black'
+                    : m.role === 'rep'
+                    ? 'max-w-[85%] rounded-2xl rounded-bl-sm border border-[#c9a84c]/30 bg-[#1a1810] px-3.5 py-2 text-sm text-gray-100'
                     : 'max-w-[85%] rounded-2xl rounded-bl-sm bg-[#1c1c1c] px-3.5 py-2 text-sm text-gray-100'
                 }
                 style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}
