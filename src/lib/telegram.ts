@@ -48,8 +48,14 @@ function formatLead(lead: LeadAlert): string {
   return lines.join('\n')
 }
 
+/** A Telegram inline button that opens a URL when tapped. */
+type UrlButton = { text: string; url: string }
+
 /** Low-level send. Returns true on success, false (logged) on any failure. */
-export async function sendTelegramMessage(text: string): Promise<boolean> {
+export async function sendTelegramMessage(
+  text: string,
+  buttons: UrlButton[] = [],
+): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN
   const chatId = process.env.TELEGRAM_CHAT_ID
 
@@ -58,16 +64,22 @@ export async function sendTelegramMessage(text: string): Promise<boolean> {
     return false
   }
 
+  const payload: Record<string, unknown> = {
+    chat_id: chatId,
+    text,
+    parse_mode: 'HTML',
+    disable_web_page_preview: true,
+  }
+  // One button per row for easy tapping on mobile.
+  if (buttons.length > 0) {
+    payload.reply_markup = { inline_keyboard: buttons.map((b) => [b]) }
+  }
+
   try {
     const res = await fetch(`${TELEGRAM_API}/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        parse_mode: 'HTML',
-        disable_web_page_preview: true,
-      }),
+      body: JSON.stringify(payload),
     })
 
     if (!res.ok) {
@@ -82,7 +94,31 @@ export async function sendTelegramMessage(text: string): Promise<boolean> {
   }
 }
 
-/** Send a formatted lead alert. Never throws. */
+/** Build quick-action link buttons from the lead's contact details. */
+function leadButtons(lead: LeadAlert): UrlButton[] {
+  const buttons: UrlButton[] = []
+
+  // WhatsApp — only if we have a usable phone number.
+  const digits = (lead.phone ?? '').replace(/\D/g, '')
+  if (digits.length >= 7) {
+    buttons.push({ text: '💬 WhatsApp', url: `https://wa.me/${digits}` })
+  }
+
+  // Reply by email — opens Gmail compose, pre-addressed to the lead.
+  if (lead.email) {
+    const firstName = lead.name.split(' ')[0] || 'there'
+    const subject = encodeURIComponent('Re: Your inquiry to Seliem.dev')
+    const body = encodeURIComponent(`Hi ${firstName},\n\nThanks for reaching out to Seliem.dev! `)
+    buttons.push({
+      text: '📧 Reply by Email',
+      url: `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(lead.email)}&su=${subject}&body=${body}`,
+    })
+  }
+
+  return buttons
+}
+
+/** Send a formatted lead alert with quick-action buttons. Never throws. */
 export async function notifyLead(lead: LeadAlert): Promise<boolean> {
-  return sendTelegramMessage(formatLead(lead))
+  return sendTelegramMessage(formatLead(lead), leadButtons(lead))
 }
