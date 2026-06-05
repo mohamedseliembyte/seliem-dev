@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Menu, X, Instagram, Mail } from 'lucide-react'
+import { Menu, X, Instagram, Mail, User } from 'lucide-react'
 
 function TikTokIcon({ className }: { className?: string }) {
   return (
@@ -88,6 +88,15 @@ export default function Navbar() {
               <Mail className="w-[18px] h-[18px]" />
             </a>
 
+            {/* Account */}
+            <Link
+              href="/account"
+              className="hidden md:flex items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-1.5 text-sm font-medium text-gray-200 hover:border-[#c9a84c]/50 hover:text-white transition-colors duration-200"
+            >
+              <User className="w-4 h-4 text-[#c9a84c]" />
+              Account
+            </Link>
+
             <button
               onClick={() => setMobileOpen((o) => !o)}
               className="md:hidden p-2 text-white hover:text-[#c9a84c] transition-colors"
@@ -116,6 +125,14 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          <Link
+            href="/account"
+            onClick={closeMobile}
+            className="flex items-center gap-2 py-3 text-base font-medium text-gray-300 hover:text-white border-b border-white/5 transition-colors"
+          >
+            <User className="w-4 h-4 text-[#c9a84c]" />
+            Account
+          </Link>
           <div className="flex items-center gap-5 pt-5">
             <a
               href="https://www.tiktok.com/@seliem.dev"
