@@ -1,6 +1,7 @@
 import { Resend } from 'resend'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { notifyLead } from '@/lib/telegram'
 
 // Routing — all destinations come from env vars, nothing hardcoded
 const FROM_ADDRESS = process.env.FROM_EMAIL        ?? 'onboarding@resend.dev'
@@ -143,6 +144,19 @@ export async function POST(req: NextRequest) {
           <p style="margin:0;color:#888;font-size:13px">— The Seliem.dev Team</p>
         </div>
       `,
+    })
+
+    // Ping Telegram with the lead (non-blocking — never breaks the form)
+    await notifyLead({
+      type: isSupport ? 'support' : 'contact',
+      name: String(name),
+      email: String(email),
+      message: String(message),
+      businessName: String(businessName),
+      phone: String(phone),
+      businessType: String(businessType),
+      budget: budget ? String(budget) : undefined,
+      goals: goals ? String(goals) : undefined,
     })
 
     return NextResponse.json({ success: true })
