@@ -41,11 +41,20 @@ export default function ChatWidget() {
   const [repActive, setRepActive] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const lastPollRef = useRef<string>(new Date().toISOString())
+  const historyLoadedRef = useRef(false)
 
   useEffect(() => {
     if (isAdmin) return
     const t = setTimeout(() => setVisible(true), 1500)
-    return () => clearTimeout(t)
+    // Proactively open the chat once per session to nudge visitors to engage
+    let autoT: ReturnType<typeof setTimeout> | undefined
+    if (typeof window !== 'undefined' && !sessionStorage.getItem('sage_nudged')) {
+      autoT = setTimeout(() => {
+        sessionStorage.setItem('sage_nudged', '1')
+        setOpen(true)
+      }, 6000)
+    }
+    return () => { clearTimeout(t); if (autoT) clearTimeout(autoT) }
   }, [isAdmin])
 
   // Allow any part of the site to open the chat: window.dispatchEvent(new Event('open-chat'))
@@ -54,6 +63,29 @@ export default function ChatWidget() {
     window.addEventListener('open-chat', openChat)
     return () => window.removeEventListener('open-chat', openChat)
   }, [])
+
+  // Load prior conversation history the first time the chat opens (continue a convo)
+  useEffect(() => {
+    if (!open || historyLoadedRef.current) return
+    historyLoadedRef.current = true
+    const sid = getSessionId()
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/chat/messages?session_id=${encodeURIComponent(sid)}`)
+        const data = await res.json()
+        const hist = data.messages ?? []
+        if (hist.length > 0) {
+          const mapped: Msg[] = hist.map((m: { role: string; content: string }) => ({
+            role: m.role === 'user' ? 'user' : m.role === 'human' ? 'rep' : 'assistant',
+            content: m.content,
+          }))
+          setMessages([{ role: 'assistant', content: GREETING }, ...mapped])
+          lastPollRef.current = hist[hist.length - 1].created_at
+          if (data.human) setRepActive(true)
+        }
+      } catch { /* ignore */ }
+    })()
+  }, [open])
 
   // Poll for live rep replies while the chat is open
   useEffect(() => {
