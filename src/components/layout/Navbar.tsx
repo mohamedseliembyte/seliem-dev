@@ -81,7 +81,7 @@ export default function Navbar() {
               <Instagram className="w-[18px] h-[18px]" />
             </a>
             <a
-              href="mailto:mohamed.seliem.dev@gmail.com"
+              href="mailto:hello@seliem.dev"
               aria-label="Email"
               className="hidden md:flex items-center text-[#c9a84c] hover:text-[#f5d485] transition-colors duration-200"
             >
@@ -134,7 +134,7 @@ export default function Navbar() {
               <Instagram className="w-5 h-5" />
             </a>
             <a
-              href="mailto:mohamed.seliem.dev@gmail.com"
+              href="mailto:hello@seliem.dev"
               aria-label="Email"
               className="text-[#c9a84c] hover:text-[#f5d485] transition-colors"
             >

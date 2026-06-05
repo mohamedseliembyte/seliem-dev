@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { X, Send, Sparkles } from 'lucide-react'
 
 type Msg = { role: 'user' | 'assistant'; content: string }
@@ -19,6 +20,8 @@ function getSessionId(): string {
 }
 
 export default function ChatWidget() {
+  const pathname = usePathname()
+  const isAdmin = pathname?.startsWith('/admin')
   const [visible, setVisible] = useState(false)
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Msg[]>([{ role: 'assistant', content: GREETING }])
@@ -27,9 +30,12 @@ export default function ChatWidget() {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    if (isAdmin) return
     const t = setTimeout(() => setVisible(true), 1500)
     return () => clearTimeout(t)
-  }, [])
+  }, [isAdmin])
+
+  if (isAdmin) return null
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })

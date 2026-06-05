@@ -15,8 +15,8 @@ const channels = [
   {
     icon: Mail,
     label: 'Email',
-    value: 'mohamed.seliem.dev@gmail.com',
-    href: 'mailto:mohamed.seliem.dev@gmail.com',
+    value: 'hello@seliem.dev',
+    href: 'mailto:hello@seliem.dev',
     description: 'Best for project inquiries',
   },
   {

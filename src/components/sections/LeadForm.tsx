@@ -81,10 +81,10 @@ function PrivacyModal({ onClose }: { onClose: () => void }) {
               <p>
                 To request access to, correction of, or deletion of your data, contact us at{' '}
                 <a
-                  href="mailto:mohamed.seliem.dev@gmail.com"
+                  href="mailto:hello@seliem.dev"
                   className="text-[#c9a84c] hover:text-[#f5d485] underline underline-offset-2 transition-colors"
                 >
-                  mohamed.seliem.dev@gmail.com
+                  hello@seliem.dev
                 </a>
                 .
               </p>
@@ -405,10 +405,10 @@ export default function LeadForm() {
                         <p className="text-sm text-red-400">
                           Something went wrong. Please email me at{' '}
                           <a
-                            href="mailto:mohamed.seliem.dev@gmail.com"
+                            href="mailto:hello@seliem.dev"
                             className="underline hover:text-red-300 transition-colors"
                           >
-                            mohamed.seliem.dev@gmail.com
+                            hello@seliem.dev
                           </a>
                         </p>
                       </div>

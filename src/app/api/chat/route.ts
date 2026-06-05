@@ -109,6 +109,28 @@ export async function POST(req: NextRequest) {
         args = {}
       }
 
+      // Only save if we actually got a real name and email (not placeholders)
+      const hasRealInfo =
+        args.name && args.email &&
+        !/^(unknown|n\/a|none|na|tbd)$/i.test(args.name.trim()) &&
+        !/^(unknown|n\/a|none|na|tbd)$/i.test(args.email.trim()) &&
+        args.email.includes('@')
+
+      if (!hasRealInfo) {
+        // Skip saving — ask the model to keep qualifying
+        const followup = await groqChat(
+          [
+            ...convo,
+            { role: 'assistant', content: null, tool_calls: first.toolCalls },
+            { role: 'tool', tool_call_id: call.id, content: 'Not enough info yet. Please keep chatting to learn the visitor\'s name and email before calling capture_lead again.' },
+          ],
+          true,
+        )
+        replyText = followup.content ?? "Could you share your name and email so Mohamed can follow up?"
+        await supabase.from('messages').insert({ conversation_id: conversationId, role: 'assistant', content: replyText })
+        return NextResponse.json({ reply: replyText })
+      }
+
       // Persist the lead
       const leadId = await saveLead({
         type: 'contact',

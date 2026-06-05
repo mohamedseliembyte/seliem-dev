@@ -62,12 +62,12 @@ export default function Footer() {
             <ul className="space-y-3">
               <li>
                 <a
-                  href="mailto:mohamed.seliem.dev@gmail.com"
+                  href="mailto:hello@seliem.dev"
                   aria-label="Email Mohamed Seliem"
                   className="flex items-start gap-2.5 text-sm text-gray-400 hover:text-[#c9a84c] transition-colors duration-200 min-w-0"
                 >
                   <Mail className="w-4 h-4 text-[#c9a84c] shrink-0 mt-0.5" aria-hidden="true" />
-                  <span className="break-all min-w-0">mohamed.seliem.dev@gmail.com</span>
+                  <span className="break-all min-w-0">hello@seliem.dev</span>
                 </a>
               </li>
               <li>
