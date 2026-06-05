@@ -4,6 +4,7 @@ import { getSupabaseAdmin, saveLead } from '@/lib/supabase'
 import { notifyLead } from '@/lib/telegram'
 import { sendTelegramMessage } from '@/lib/telegram'
 import { groqChat, SYSTEM_PROMPT, type ChatMessage } from '@/lib/groq'
+import { maybeEmailClientReply } from '@/lib/notify-client'
 
 // ── Tiered rate limits: anonymous = 15/hr, signed-in = 100/hr ────────────────
 const ANON_LIMIT = 15
@@ -209,6 +210,9 @@ export async function POST(req: NextRequest) {
     // Save the assistant reply
     await supabase.from('messages').insert({ conversation_id: conversationId, role: 'assistant', content: replyText })
     await supabase.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', conversationId)
+
+    // If the visitor has gone offline, email them the AI's reply (throttled, only if known lead)
+    void maybeEmailClientReply(conversationId, replyText)
 
     return NextResponse.json({ reply: replyText })
   } catch (err) {

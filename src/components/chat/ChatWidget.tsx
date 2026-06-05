@@ -307,8 +307,19 @@ export default function ChatWidget() {
         <button
           onClick={() => setOpen(true)}
           aria-label="Chat with us"
-          className="flex items-center gap-2 rounded-full border border-[#c9a84c]/60 bg-[#0a0a0a] px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-black/40 transition-all duration-200 hover:border-[#c9a84c] hover:bg-[#111] hover:shadow-xl active:scale-95"
+          className="group relative flex items-center gap-2 rounded-full border border-[#c9a84c]/60 bg-[#0a0a0a] px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-black/40 transition-all duration-300 hover:border-[#c9a84c] hover:bg-[#111] hover:shadow-xl hover:shadow-[#c9a84c]/20 active:scale-95"
+          style={{ animation: 'sageGlow 3s ease-in-out infinite' }}
         >
+          <style>{`
+            @keyframes sageGlow {
+              0%, 100% { box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 0 0 rgba(201,168,76,0.35); }
+              50%      { box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 0 8px rgba(201,168,76,0); }
+            }
+          `}</style>
+          <span className="relative flex h-2 w-2 shrink-0">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-green-400" />
+          </span>
           <Sparkles className="h-4 w-4 shrink-0 text-[#c9a84c]" />
           <span className="hidden sm:inline">Chat with us</span>
         </button>
