@@ -107,8 +107,9 @@ export default function TermsPage() {
 
           <Section title="12. Governing Law">
             <p>
-              These Terms are governed by the laws of the jurisdiction in which Seliem.dev operates, without regard to
-              conflict-of-law principles. Any disputes shall be resolved in the courts of that jurisdiction.
+              These Terms are governed by the laws of the State of New York, United States, without regard to
+              conflict-of-law principles. Any disputes shall be resolved in the state or federal courts located in
+              Kings County (Brooklyn), New York, and you consent to the jurisdiction of those courts.
             </p>
           </Section>
 
