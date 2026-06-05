@@ -4,7 +4,7 @@ import Script from 'next/script'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import ScrollProgress from '@/components/ui/ScrollProgress'
-import SupportButton from '@/components/ui/SupportButton'
+import ChatWidget from '@/components/chat/ChatWidget'
 import CookieBanner from '@/components/ui/CookieBanner'
 import './globals.css'
 
@@ -72,7 +72,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </a>
         {children}
         <ScrollProgress />
-        <SupportButton />
+        <ChatWidget />
         <CookieBanner />
         <Analytics />
         <SpeedInsights />
