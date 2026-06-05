@@ -18,7 +18,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
       "font-src 'self' fonts.gstatic.com data:",
       "img-src 'self' data: blob: images.unsplash.com plus.unsplash.com www.googletagmanager.com",
-      "connect-src 'self' vitals.vercel-insights.com api.resend.com www.google-analytics.com analytics.google.com",
+      "connect-src 'self' vitals.vercel-insights.com api.resend.com www.google-analytics.com analytics.google.com https://*.supabase.co wss://*.supabase.co",
       "frame-ancestors 'self'",
       "base-uri 'self'",
       "form-action 'self'",
