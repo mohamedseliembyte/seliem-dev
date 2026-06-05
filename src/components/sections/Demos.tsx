@@ -104,7 +104,7 @@ function MacBtn({
       >
         <span
           className="absolute inset-0 flex items-center justify-center leading-none opacity-0 group-hover/btn:opacity-100 transition-opacity"
-          style={{ fontSize: 8, fontWeight: 900, color: 'rgba(0,0,0,0.5)' }}
+          style={{ fontSize: 9, fontWeight: 700, color: 'rgba(0,0,0,0.55)', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' }}
         >
           {icon}
         </span>
@@ -421,15 +421,6 @@ export default function Demos() {
                       borderRadius: '0 3px 3px 0',
                       background: 'linear-gradient(90deg, #3e3e3e, #323232, #3e3e3e)',
                       boxShadow: 'inset 1px 0 1px rgba(255,255,255,0.06), -1px 0 3px rgba(0,0,0,0.65)',
-                      zIndex: 2,
-                    }} />
-                    {/* Power button */}
-                    <div style={{
-                      position: 'absolute', top: 3, right: '20%',
-                      width: 30, height: 4,
-                      borderRadius: '0 0 3px 3px',
-                      background: 'linear-gradient(180deg, #3e3e3e, #323232, #3e3e3e)',
-                      boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.06), 0 -1px 3px rgba(0,0,0,0.65)',
                       zIndex: 2,
                     }} />
                   </>
