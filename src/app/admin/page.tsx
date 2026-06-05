@@ -223,7 +223,8 @@ export default function AdminPage() {
         try {
           const res = await fetch(`/api/chat/messages?session_id=${encodeURIComponent(c.session_id)}`)
           const data = await res.json()
-          if (data.messages) {
+          // Only update when we actually got messages — never wipe what's loaded
+          if (data.messages && data.messages.length > 0) {
             setMessages((prev) => {
               const others = prev.filter((m) => m.conversation_id !== c.id)
               const fresh = data.messages.map((m: { role: string; content: string; created_at: string }) => ({ ...m, conversation_id: c.id }))
@@ -300,7 +301,7 @@ export default function AdminPage() {
           const sc = STATUS_COLORS[lead.status] ?? STATUS_COLORS.new
           const convos = getLeadConversations(lead.id)
           return (
-            <button key={lead.id} onClick={() => { setSelected(lead); setTab('details') }} style={s.row}>
+            <button key={lead.id} onClick={() => { setSelected(lead); setTab(getLeadConversations(lead.id).length > 0 ? 'chat' : 'details') }} style={s.row}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 600, color: '#eee' }}>{lead.name}</span>
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -327,8 +328,16 @@ export default function AdminPage() {
         <div style={s.overlay} onClick={() => setSelected(null)}>
           <div style={s.drawer} onClick={(e) => e.stopPropagation()}>
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ color: GOLD, margin: 0, fontSize: 20 }}>{selected.name}</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div>
+                <h2 style={{ color: GOLD, margin: 0, fontSize: 20 }}>{selected.name}</h2>
+                <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
+                  {selected.email}
+                  {getLeadConversations(selected.id).some((c) => c.status === 'human') && (
+                    <span style={{ marginLeft: 8, color: '#6d6' }}>● live chat</span>
+                  )}
+                </div>
+              </div>
               <button onClick={() => setSelected(null)} style={s.closeBtn}>✕</button>
             </div>
 
