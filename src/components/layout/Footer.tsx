@@ -63,7 +63,7 @@ export default function Footer() {
               <li>
                 <a
                   href="mailto:hello@seliem.dev"
-                  aria-label="Email Mohamed Seliem"
+                  aria-label="Email Seliem.dev"
                   className="flex items-start gap-2.5 text-sm text-gray-400 hover:text-[#c9a84c] transition-colors duration-200 min-w-0"
                 >
                   <Mail className="w-4 h-4 text-[#c9a84c] shrink-0 mt-0.5" aria-hidden="true" />
@@ -102,7 +102,7 @@ export default function Footer() {
           <p className="text-xs text-gray-600">
             © 2025 Seliem.dev. All rights reserved.
           </p>
-          <p className="text-xs text-gray-700">Built by Mohamed Seliem</p>
+          <p className="text-xs text-gray-700">Built by Seliem.dev</p>
         </div>
       </div>
     </footer>

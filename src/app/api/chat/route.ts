@@ -24,7 +24,7 @@ function isLimited(key: string, isAuthenticated: boolean): boolean {
 }
 
 const FALLBACK =
-  "I'm having a brief hiccup on my end — but I'd love to help. Could you share your email and a sentence about what you need? Mohamed will personally reach out. 🙏"
+  "I'm having a brief hiccup on my end — but I'd love to help. Could you share your email and a sentence about what you need? Our team will personally reach out. 🙏"
 
 export async function POST(req: NextRequest) {
   let body: { session_id?: string; message?: string; user_email?: string; user_name?: string }
@@ -52,12 +52,12 @@ export async function POST(req: NextRequest) {
     if (!isAuthenticated) {
       return NextResponse.json({
         reply:
-          "You've reached the message limit for guests. Sign in with Google (top-right) for unlimited messages — or leave your email and Mohamed will follow up! 🙏",
+          "You've reached the message limit for guests. Sign in with Google (top-right) for unlimited messages — or leave your email and our team will follow up! 🙏",
       })
     }
     return NextResponse.json({
       reply:
-        "I've hit my message limit for now 🙏 — Mohamed will follow up with you directly!",
+        "I've hit my message limit for now 🙏 — our team will follow up with you directly!",
     })
   }
 
@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
           ],
           true,
         )
-        replyText = followup.content ?? "Could you share your name and email so Mohamed can follow up?"
+        replyText = followup.content ?? "Could you share your name and email so our team can follow up?"
         await supabase.from('messages').insert({ conversation_id: conversationId, role: 'assistant', content: replyText })
         return NextResponse.json({ reply: replyText })
       }
@@ -186,13 +186,13 @@ export async function POST(req: NextRequest) {
           [
             ...convo,
             { role: 'assistant', content: null, tool_calls: first.toolCalls },
-            { role: 'tool', tool_call_id: call.id, content: 'Lead saved successfully. Mohamed has been notified.' },
+            { role: 'tool', tool_call_id: call.id, content: 'Lead saved successfully. Our team has been notified.' },
           ],
           false,
         )
-        replyText = followup.content ?? "Perfect — I have passed your details to Mohamed. He will reach out within 24-48 hours! 🙌"
+        replyText = followup.content ?? "Perfect — I have passed your details to our team. We will reach out within 24-48 hours! 🙌"
       } catch {
-        replyText = "Perfect — I have passed your details to Mohamed. He will reach out within 24-48 hours! 🙌"
+        replyText = "Perfect — I have passed your details to our team. We will reach out within 24-48 hours! 🙌"
       }
     }
 

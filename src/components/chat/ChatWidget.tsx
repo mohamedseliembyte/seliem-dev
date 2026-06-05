@@ -8,7 +8,7 @@ import { googlePopupSignIn, type GoogleUser } from '@/lib/google-auth'
 type Msg = { role: 'user' | 'assistant'; content: string }
 
 const GREETING =
-  "Hi! 👋 I'm Sage, Mohamed's assistant at Seliem.dev. Looking for a website, an AI automation, or both? Tell me a bit about your project and I'll help you get started."
+  "Hi! 👋 I'm Sage, the Seliem.dev assistant. Looking for a website, an AI automation, or both? Tell me a bit about your project and I'll help you get started."
 
 function getSessionId(): string {
   if (typeof window === 'undefined') return ''
