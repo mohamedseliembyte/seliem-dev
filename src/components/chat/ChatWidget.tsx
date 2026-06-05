@@ -2,21 +2,30 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { X, Send, Sparkles } from 'lucide-react'
+import { X, Send, Sparkles, LogIn } from 'lucide-react'
+import { googlePopupSignIn, type GoogleUser } from '@/lib/google-auth'
 
 type Msg = { role: 'user' | 'assistant'; content: string }
 
 const GREETING =
-  "Hi! 👋 I’m Sage, Mohamed’s assistant at Seliem.dev. Looking for a website, an AI automation, or both? Tell me a bit about your project and I’ll help you get started."
+  "Hi! 👋 I'm Sage, Mohamed's assistant at Seliem.dev. Looking for a website, an AI automation, or both? Tell me a bit about your project and I'll help you get started."
 
 function getSessionId(): string {
   if (typeof window === 'undefined') return ''
   let id = localStorage.getItem('sage_session')
   if (!id) {
-    id = (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`)
+    id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
     localStorage.setItem('sage_session', id)
   }
   return id
+}
+
+function getSavedUser(): GoogleUser | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem('sage_user')
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
 }
 
 export default function ChatWidget() {
@@ -27,6 +36,8 @@ export default function ChatWidget() {
   const [messages, setMessages] = useState<Msg[]>([{ role: 'assistant', content: GREETING }])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [user, setUser] = useState<GoogleUser | null>(null)
+  const [signingIn, setSigningIn] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -35,11 +46,30 @@ export default function ChatWidget() {
     return () => clearTimeout(t)
   }, [isAdmin])
 
-  if (isAdmin) return null
+  // Load saved user on mount
+  useEffect(() => {
+    const saved = getSavedUser()
+    if (saved) setUser(saved)
+  }, [])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, open, sending])
+
+  if (isAdmin) return null
+
+  async function handleGoogleSignIn() {
+    setSigningIn(true)
+    try {
+      const gUser = await googlePopupSignIn()
+      setUser(gUser)
+      localStorage.setItem('sage_user', JSON.stringify(gUser))
+      setMessages((m) => [...m, { role: 'assistant', content: `Welcome, ${gUser.name.split(' ')[0]}! 🙌 You now have unlimited messages. How can I help with your project?` }])
+    } catch {
+      // Popup dismissed or blocked — no error shown, just stay anonymous
+    }
+    setSigningIn(false)
+  }
 
   async function send() {
     const text = input.trim()
@@ -51,14 +81,19 @@ export default function ChatWidget() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: getSessionId(), message: text }),
+        body: JSON.stringify({
+          session_id: getSessionId(),
+          message: text,
+          // Pass Google user info if signed in (for higher limits + auto lead capture)
+          ...(user ? { user_email: user.email, user_name: user.name } : {}),
+        }),
       })
       const data = await res.json()
       setMessages((m) => [...m, { role: 'assistant', content: data.reply ?? 'Sorry, something went wrong.' }])
     } catch {
       setMessages((m) => [
         ...m,
-        { role: 'assistant', content: 'Hmm, I couldn’t reach the server. Mind trying again in a moment?' },
+        { role: 'assistant', content: "Hmm, I couldn't reach the server. Mind trying again in a moment?" },
       ])
     } finally {
       setSending(false)
@@ -99,9 +134,30 @@ export default function ChatWidget() {
               <div className="text-[11px] text-green-400">● Online</div>
             </div>
           </div>
-          <button onClick={() => setOpen(false)} aria-label="Close chat" className="text-gray-500 hover:text-white">
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Google sign-in for higher limits */}
+            {!user && (
+              <button
+                onClick={handleGoogleSignIn}
+                disabled={signingIn}
+                title="Sign in for unlimited messages"
+                className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-gray-400 transition hover:border-[#c9a84c]/40 hover:text-white disabled:opacity-40"
+              >
+                <LogIn className="h-3 w-3" />
+                <span className="hidden sm:inline">Sign in</span>
+              </button>
+            )}
+            {user && (
+              <div className="flex items-center gap-1.5" title={user.email}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={user.picture} alt="" className="h-5 w-5 rounded-full" />
+                <span className="max-w-[80px] truncate text-[11px] text-gray-400">{user.name.split(' ')[0]}</span>
+              </div>
+            )}
+            <button onClick={() => setOpen(false)} aria-label="Close chat" className="text-gray-500 hover:text-white">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {/* Messages */}
@@ -132,6 +188,19 @@ export default function ChatWidget() {
             </div>
           )}
         </div>
+
+        {/* Sign-in prompt for anonymous users nearing limit */}
+        {!user && messages.filter((m) => m.role === 'user').length >= 10 && (
+          <div className="border-t border-white/5 bg-[#1a1a14] px-4 py-2">
+            <button
+              onClick={handleGoogleSignIn}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#c9a84c]/30 bg-[#c9a84c]/10 py-2 text-xs text-[#c9a84c] transition hover:bg-[#c9a84c]/20"
+            >
+              <LogIn className="h-3 w-3" />
+              Sign in with Google for unlimited messages
+            </button>
+          </div>
+        )}
 
         {/* Input */}
         <div className="border-t border-white/10 bg-[#141414] p-3">

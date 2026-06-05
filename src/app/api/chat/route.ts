@@ -5,27 +5,29 @@ import { notifyLead } from '@/lib/telegram'
 import { sendTelegramMessage } from '@/lib/telegram'
 import { groqChat, SYSTEM_PROMPT, type ChatMessage } from '@/lib/groq'
 
-// ── Per-session rate limit (anonymous visitors) ──────────────────────────────
-const MAX_MESSAGES_PER_HOUR = 30
+// ── Tiered rate limits: anonymous = 15/hr, signed-in = 100/hr ────────────────
+const ANON_LIMIT = 15
+const AUTH_LIMIT = 100
 const rl = new Map<string, { count: number; resetAt: number }>()
 
-function isLimited(key: string): boolean {
+function isLimited(key: string, isAuthenticated: boolean): boolean {
+  const max = isAuthenticated ? AUTH_LIMIT : ANON_LIMIT
   const now = Date.now()
   const e = rl.get(key)
   if (!e || now > e.resetAt) {
     rl.set(key, { count: 1, resetAt: now + 3_600_000 })
     return false
   }
-  if (e.count >= MAX_MESSAGES_PER_HOUR) return true
+  if (e.count >= max) return true
   e.count++
   return false
 }
 
 const FALLBACK =
-  "I’m having a brief hiccup on my end — but I’d love to help. Could you share your email and a sentence about what you need? Mohamed will personally reach out. 🙏"
+  "I'm having a brief hiccup on my end — but I'd love to help. Could you share your email and a sentence about what you need? Mohamed will personally reach out. 🙏"
 
 export async function POST(req: NextRequest) {
-  let body: { session_id?: string; message?: string }
+  let body: { session_id?: string; message?: string; user_email?: string; user_name?: string }
   try {
     body = await req.json()
   } catch {
@@ -34,19 +36,28 @@ export async function POST(req: NextRequest) {
 
   const sessionId = (body.session_id ?? '').trim()
   const message = (body.message ?? '').trim()
+  const userEmail = (body.user_email ?? '').trim()
+  const userName = (body.user_name ?? '').trim()
+  const isAuthenticated = Boolean(userEmail && userEmail.includes('@'))
 
   if (!sessionId || !message) {
     return NextResponse.json({ error: 'Missing session_id or message' }, { status: 400 })
   }
   if (message.length > 1500) {
-    return NextResponse.json({ reply: 'That’s a long one! Could you shorten it a little?' })
+    return NextResponse.json({ reply: "That's a long one! Could you shorten it a little?" })
   }
 
-  // Rate limit (graceful, not an error)
-  if (isLimited(sessionId)) {
+  // Tiered rate limit (graceful, not an error)
+  if (isLimited(sessionId, isAuthenticated)) {
+    if (!isAuthenticated) {
+      return NextResponse.json({
+        reply:
+          "You've reached the message limit for guests. Sign in with Google (top-right) for unlimited messages — or leave your email and Mohamed will follow up! 🙏",
+      })
+    }
     return NextResponse.json({
       reply:
-        "I’ve hit my message limit for now 🙏 — leave your email and a quick note, and Mohamed will follow up with you directly!",
+        "I've hit my message limit for now 🙏 — Mohamed will follow up with you directly!",
     })
   }
 
@@ -88,8 +99,14 @@ export async function POST(req: NextRequest) {
     await supabase.from('messages').insert({ conversation_id: conversationId, role: 'user', content: message })
 
     // ── Build the prompt ────────────────────────────────────────────────────
+    // If the user signed in with Google, tell Sage so it skips asking for name/email
+    let systemAddendum = ''
+    if (isAuthenticated) {
+      systemAddendum = `\n\nIMPORTANT CONTEXT: This visitor signed in with Google. Their name is "${userName}" and their email is "${userEmail}". You already have their contact info — do NOT ask them for their name or email. Focus on learning about their project, then call capture_lead with the info you already have plus what you learn.`
+    }
+
     const convo: ChatMessage[] = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: SYSTEM_PROMPT + systemAddendum },
       ...((history ?? []).map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })) as ChatMessage[]),
       { role: 'user', content: message },
     ]
@@ -173,13 +190,13 @@ export async function POST(req: NextRequest) {
           ],
           false,
         )
-        replyText = followup.content ?? 'Perfect — I’ve passed your details to Mohamed. He’ll reach out within 24–48 hours! 🙌'
+        replyText = followup.content ?? "Perfect — I have passed your details to Mohamed. He will reach out within 24-48 hours! 🙌"
       } catch {
-        replyText = 'Perfect — I’ve passed your details to Mohamed. He’ll reach out within 24–48 hours! 🙌'
+        replyText = "Perfect — I have passed your details to Mohamed. He will reach out within 24-48 hours! 🙌"
       }
     }
 
-    if (!replyText) replyText = "Got it — could you tell me a bit more about what you’re looking for?"
+    if (!replyText) replyText = "Got it — could you tell me a bit more about what you're looking for?"
 
     // Save the assistant reply
     await supabase.from('messages').insert({ conversation_id: conversationId, role: 'assistant', content: replyText })

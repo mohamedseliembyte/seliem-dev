@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { useCallback, useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { getSupabaseBrowser } from '@/lib/supabase-client'
+import { googlePopupSignIn, exchangeGoogleToken } from '@/lib/google-auth'
 
 /* ── Types ────────────────────────────────────────────────────────────────── */
 type Lead = {
@@ -75,7 +76,7 @@ export default function AdminPage() {
     setError(null)
     try {
       const res = await fetch('/api/admin/leads', { headers: { Authorization: `Bearer ${token}` } })
-      if (res.status === 403) { setError('This Google account isn’t authorized.'); return }
+      if (res.status === 403) { setError("This Google account isn't authorized."); return }
       if (!res.ok) { setError('Failed to load.'); return }
       const data = await res.json()
       setLeads(data.leads ?? [])
@@ -106,7 +107,18 @@ export default function AdminPage() {
     return () => { mounted = false; sub.subscription.unsubscribe() }
   }, [supabase, loadData])
 
-  const signIn = () => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/admin` : undefined } })
+  const signIn = async () => {
+    try {
+      const gUser = await googlePopupSignIn()
+      const { error } = await exchangeGoogleToken(supabase, gUser.idToken)
+      if (error) setAuthError(String((error as { message?: string }).message ?? error))
+    } catch (err) {
+      // Popup blocked or dismissed → fall back to redirect
+      if (err instanceof Error && err.message === 'popup_blocked') {
+        supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/admin` : undefined } })
+      }
+    }
+  }
   const signOut = () => supabase.auth.signOut()
 
   const updateLead = async (id: string, updates: Record<string, unknown>) => {
@@ -182,7 +194,7 @@ export default function AdminPage() {
 
       {!error && filtered.length === 0 && (
         <p style={{ color: '#777', padding: 24, textAlign: 'center' }}>
-          {filter === 'all' ? 'No leads yet. They’ll appear here when someone chats or submits the form.' : `No ${filter} leads.`}
+          {filter === 'all' ? "No leads yet. They'll appear here when someone chats or submits the form." : `No ${filter} leads.`}
         </p>
       )}
 
