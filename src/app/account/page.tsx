@@ -138,10 +138,28 @@ export default function AccountPage() {
                     <div className="space-y-2">
                       {msgsFor(c.id).slice(-6).map((m, i) => (
                         <div key={i} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
-                          <div className={`max-w-[85%] rounded-xl px-3 py-1.5 text-sm ${m.role === 'user' ? 'bg-[#c9a84c] text-black' : 'bg-[#1c1c1c] text-gray-200'}`} style={{ whiteSpace: 'pre-wrap' }}>{m.content}</div>
+                          <div
+                            className={`max-w-[85%] rounded-xl px-3 py-1.5 text-sm ${
+                              m.role === 'user'
+                                ? 'bg-[#c9a84c] text-black'
+                                : m.role === 'human'
+                                ? 'border border-[#c9a84c]/30 bg-[#1a1810] text-gray-100'
+                                : 'bg-[#1c1c1c] text-gray-200'
+                            }`}
+                            style={{ whiteSpace: 'pre-wrap' }}
+                          >
+                            {m.role === 'human' && <div className="mb-0.5 text-[10px] font-medium text-[#c9a84c]">Seliem.dev team</div>}
+                            {m.content}
+                          </div>
                         </div>
                       ))}
                     </div>
+                    <button
+                      onClick={() => window.dispatchEvent(new Event('open-chat'))}
+                      className="mt-4 w-full rounded-xl border border-[#c9a84c]/40 bg-[#c9a84c]/10 py-2.5 text-sm font-semibold text-[#c9a84c] transition hover:bg-[#c9a84c]/20"
+                    >
+                      💬 Continue this conversation
+                    </button>
                   </div>
                 ))}
               </>

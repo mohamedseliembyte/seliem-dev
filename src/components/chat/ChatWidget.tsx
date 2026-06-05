@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { X, Send, Sparkles, LogIn } from 'lucide-react'
-import { googlePopupSignIn, type GoogleUser } from '@/lib/google-auth'
+import { googlePopupSignIn, exchangeGoogleToken, type GoogleUser } from '@/lib/google-auth'
+import { getSupabaseBrowser } from '@/lib/supabase-client'
 
 type Msg = { role: 'user' | 'assistant' | 'rep'; content: string }
 
@@ -20,12 +21,11 @@ function getSessionId(): string {
   return id
 }
 
-function getSavedUser(): GoogleUser | null {
-  if (typeof window === 'undefined') return null
-  try {
-    const raw = localStorage.getItem('sage_user')
-    return raw ? JSON.parse(raw) : null
-  } catch { return null }
+// A signed-in user always maps to ONE persistent conversation keyed by email,
+// so the bot remembers them across devices/sessions. Anonymous → browser session.
+function effectiveSid(user: GoogleUser | null): string {
+  if (user?.email) return `user:${user.email.toLowerCase()}`
+  return getSessionId()
 }
 
 export default function ChatWidget() {
@@ -64,11 +64,12 @@ export default function ChatWidget() {
     return () => window.removeEventListener('open-chat', openChat)
   }, [])
 
-  // Load prior conversation history the first time the chat opens (continue a convo)
+  // Load prior conversation history when the chat opens (continue a convo).
+  // Re-runs when the signed-in user changes so it loads their persistent thread.
   useEffect(() => {
     if (!open || historyLoadedRef.current) return
     historyLoadedRef.current = true
-    const sid = getSessionId()
+    const sid = effectiveSid(user)
     ;(async () => {
       try {
         const res = await fetch(`/api/chat/messages?session_id=${encodeURIComponent(sid)}`)
@@ -85,12 +86,12 @@ export default function ChatWidget() {
         }
       } catch { /* ignore */ }
     })()
-  }, [open])
+  }, [open, user])
 
   // Poll for live rep replies while the chat is open
   useEffect(() => {
     if (!open) return
-    const sid = getSessionId()
+    const sid = effectiveSid(user)
     const tick = async () => {
       try {
         const res = await fetch(`/api/chat/messages?session_id=${encodeURIComponent(sid)}&after=${encodeURIComponent(lastPollRef.current)}`)
@@ -107,12 +108,40 @@ export default function ChatWidget() {
     }
     const id = setInterval(tick, 4000)
     return () => clearInterval(id)
-  }, [open])
+  }, [open, user])
 
-  // Load saved user on mount
+  // Know the signed-in user from the shared Supabase session (works whether they
+  // signed in here, on /account, or /admin)
   useEffect(() => {
-    const saved = getSavedUser()
-    if (saved) setUser(saved)
+    const supabase = getSupabaseBrowser()
+    supabase.auth.getSession().then(({ data }) => {
+      const u = data.session?.user
+      if (u?.email) {
+        setUser({
+          email: u.email,
+          name: (u.user_metadata?.full_name as string) || (u.user_metadata?.name as string) || u.email.split('@')[0],
+          picture: (u.user_metadata?.avatar_url as string) || (u.user_metadata?.picture as string) || '',
+          idToken: '',
+          nonce: '',
+        })
+      }
+    })
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      const u = session?.user
+      if (u?.email) {
+        setUser({
+          email: u.email,
+          name: (u.user_metadata?.full_name as string) || (u.user_metadata?.name as string) || u.email.split('@')[0],
+          picture: (u.user_metadata?.avatar_url as string) || (u.user_metadata?.picture as string) || '',
+          idToken: '',
+          nonce: '',
+        })
+        historyLoadedRef.current = false // reload this user's conversation
+      } else {
+        setUser(null)
+      }
+    })
+    return () => sub.subscription.unsubscribe()
   }, [])
 
   useEffect(() => {
@@ -125,9 +154,10 @@ export default function ChatWidget() {
     setSigningIn(true)
     try {
       const gUser = await googlePopupSignIn()
+      await exchangeGoogleToken(getSupabaseBrowser(), gUser.idToken, gUser.nonce)
       setUser(gUser)
-      localStorage.setItem('sage_user', JSON.stringify(gUser))
-      setMessages((m) => [...m, { role: 'assistant', content: `Welcome, ${gUser.name.split(' ')[0]}! 🙌 You now have unlimited messages. How can I help with your project?` }])
+      historyLoadedRef.current = false
+      setMessages((m) => [...m, { role: 'assistant', content: `Welcome back, ${gUser.name.split(' ')[0]}! 🙌 I've got our previous chats — how can I help?` }])
     } catch {
       // Popup dismissed or blocked — no error shown, just stay anonymous
     }
@@ -145,7 +175,7 @@ export default function ChatWidget() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          session_id: getSessionId(),
+          session_id: effectiveSid(user),
           message: text,
           // Pass Google user info if signed in (for higher limits + auto lead capture)
           ...(user ? { user_email: user.email, user_name: user.name } : {}),

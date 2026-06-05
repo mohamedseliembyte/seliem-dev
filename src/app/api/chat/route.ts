@@ -78,6 +78,43 @@ export async function POST(req: NextRequest) {
 
     if (existing?.id) {
       conversationId = existing.id
+    } else if (isAuthenticated) {
+      // Signed-in user with no conversation under this key yet — adopt their most
+      // recent existing conversation (so the bot remembers them) or create one.
+      const { data: lead } = await supabase
+        .from('leads')
+        .select('id')
+        .ilike('email', userEmail)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      let adopted: string | null = null
+      if (lead?.id) {
+        const { data: priorConvo } = await supabase
+          .from('conversations')
+          .select('id')
+          .eq('lead_id', lead.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        if (priorConvo?.id) {
+          await supabase.from('conversations').update({ session_id: sessionId }).eq('id', priorConvo.id)
+          adopted = priorConvo.id
+        }
+      }
+
+      if (adopted) {
+        conversationId = adopted
+      } else {
+        const { data: created, error: cErr } = await supabase
+          .from('conversations')
+          .insert({ session_id: sessionId })
+          .select('id')
+          .single()
+        if (cErr || !created) throw new Error('Failed to create conversation')
+        conversationId = created.id
+      }
     } else {
       const { data: created, error: cErr } = await supabase
         .from('conversations')
