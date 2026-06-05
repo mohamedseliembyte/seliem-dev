@@ -23,6 +23,7 @@ type Lead = {
   source: string | null
   status: string
   notes: string | null
+  customer_no: number | null
 }
 
 type Conversation = {
@@ -303,7 +304,10 @@ export default function AdminPage() {
           return (
             <button key={lead.id} onClick={() => { setSelected(lead); setTab(getLeadConversations(lead.id).length > 0 ? 'chat' : 'details') }} style={s.row}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 600, color: '#eee' }}>{lead.name}</span>
+                <span style={{ fontWeight: 600, color: '#eee' }}>
+                  {lead.customer_no && <span style={{ color: '#666', fontWeight: 400, fontSize: 12, marginRight: 6 }}>#{lead.customer_no}</span>}
+                  {lead.name}
+                </span>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {convos.length > 0 && <span style={{ ...s.smallBadge, background: '#1a1a2a', color: '#88f' }}>💬 Chat</span>}
                   <span style={{ ...s.smallBadge, background: lead.type === 'support' ? '#1c2a3a' : '#2a2414', color: lead.type === 'support' ? '#7ab' : GOLD }}>{lead.type}</span>
