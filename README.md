@@ -87,6 +87,7 @@ src/
       DemoModal.tsx         # Full-screen overlay demo viewer
       DemoPage.tsx          # Renders a realistic business website
       BookingFlow.tsx       # Barbershop, Restaurant, Request flows
+      DemoScrollytelling.tsx # Scroll-driven demo narrative
     ui/
       Button.tsx
       Badge.tsx
