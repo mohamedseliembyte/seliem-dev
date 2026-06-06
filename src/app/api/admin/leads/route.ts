@@ -71,10 +71,10 @@ export async function GET(req: NextRequest) {
     .order('created_at', { ascending: false })
     .limit(500)
 
-  // Agreements
+  // Agreements (include full content so the signed contract is on record)
   const { data: agreements } = await supabase
     .from('agreements')
-    .select('id, lead_id, scope, price, status, created_at, accepted_at, signer_name')
+    .select('id, lead_id, scope, price, content, status, created_at, accepted_at, signer_name')
     .order('created_at', { ascending: false })
     .limit(500)
 
