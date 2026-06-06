@@ -71,11 +71,19 @@ export async function GET(req: NextRequest) {
     .order('created_at', { ascending: false })
     .limit(500)
 
+  // Agreements
+  const { data: agreements } = await supabase
+    .from('agreements')
+    .select('id, lead_id, scope, price, status, created_at, accepted_at, signer_name')
+    .order('created_at', { ascending: false })
+    .limit(500)
+
   return NextResponse.json({
     leads: leads ?? [],
     conversations: conversations ?? [],
     messages,
     payments: payments ?? [],
+    agreements: agreements ?? [],
     admin: auth,
   })
 }

@@ -21,6 +21,7 @@ type Lead = {
 type Convo = { id: string; status: string; summary: string | null; created_at: string }
 type Msg = { conversation_id: string; role: string; content: string; created_at: string }
 type Payment = { id: string; lead_id: string; description: string; amount: number; status: string; created_at: string }
+type Agreement = { id: string; lead_id: string; scope: string; price: number; content: string; status: string; created_at: string; accepted_at: string | null }
 
 const GOLD = '#c9a84c'
 const PAYPAL_HANDLE = process.env.NEXT_PUBLIC_PAYPAL_HANDLE || ''
@@ -32,7 +33,8 @@ export default function AccountPage() {
   const supabase = getSupabaseBrowser()
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState<Session | null>(null)
-  const [data, setData] = useState<{ leads: Lead[]; conversations: Convo[]; messages: Msg[]; payments?: Payment[] } | null>(null)
+  const [data, setData] = useState<{ leads: Lead[]; conversations: Convo[]; messages: Msg[]; payments?: Payment[]; agreements?: Agreement[] } | null>(null)
+  const [signing, setSigning] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
 
   const load = useCallback(async (token: string) => {
@@ -41,6 +43,20 @@ export default function AccountPage() {
       if (res.ok) setData(await res.json())
     } catch { /* ignore */ }
   }, [])
+
+  const signAgreement = async (agreementId: string) => {
+    if (!session) return
+    setSigning(agreementId)
+    try {
+      const res = await fetch('/api/account/sign-agreement', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agreement_id: agreementId }),
+      })
+      if (res.ok) await load(session.access_token)
+    } catch { /* ignore */ }
+    setSigning(null)
+  }
 
   useEffect(() => {
     let mounted = true
@@ -127,6 +143,34 @@ export default function AccountPage() {
                 </div>
               </div>
             ))}
+
+            {(data?.agreements ?? []).length > 0 && (
+              <>
+                <h2 className="pt-4 text-xs font-semibold uppercase tracking-widest text-gray-600">Your Agreements</h2>
+                {(data?.agreements ?? []).map((a) => (
+                  <div key={a.id} className="rounded-2xl border border-white/10 bg-[#141414] p-5">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-lg font-semibold text-white">${Number(a.price).toLocaleString()}</span>
+                      {a.status === 'accepted'
+                        ? <span className="rounded-full bg-[#1a2a1a] px-3 py-1 text-xs font-semibold text-green-400">✓ Signed</span>
+                        : <span className="rounded-full bg-[#2a2a14] px-3 py-1 text-xs font-semibold" style={{ color: GOLD }}>Awaiting signature</span>}
+                    </div>
+                    <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-lg bg-[#0a0a0a] p-3 text-sm leading-relaxed text-gray-300" style={{ fontFamily: 'inherit' }}>{a.content}</pre>
+                    {a.status !== 'accepted' ? (
+                      <button
+                        onClick={() => signAgreement(a.id)}
+                        disabled={signing === a.id}
+                        className="mt-4 w-full rounded-xl bg-[#c9a84c] py-3 text-sm font-semibold text-black transition hover:bg-[#f5d485] disabled:opacity-50"
+                      >
+                        {signing === a.id ? 'Signing…' : '✍️ Accept & Sign'}
+                      </button>
+                    ) : (
+                      <p className="mt-3 text-xs text-gray-500">Signed on {a.accepted_at ? new Date(a.accepted_at).toLocaleString() : ''}</p>
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
 
             {(data?.payments ?? []).length > 0 && (
               <>

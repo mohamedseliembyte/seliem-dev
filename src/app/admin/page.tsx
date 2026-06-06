@@ -53,6 +53,17 @@ type Payment = {
   paid_at: string | null
 }
 
+type Agreement = {
+  id: string
+  lead_id: string
+  scope: string
+  price: number
+  status: string
+  created_at: string
+  accepted_at: string | null
+  signer_name: string | null
+}
+
 // Your PayPal.Me handle (set NEXT_PUBLIC_PAYPAL_HANDLE in env)
 const PAYPAL_HANDLE = process.env.NEXT_PUBLIC_PAYPAL_HANDLE || ''
 
@@ -81,6 +92,7 @@ export default function AdminPage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
+  const [agreements, setAgreements] = useState<Agreement[]>([])
   const [error, setError] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Lead | null>(null)
@@ -99,6 +111,7 @@ export default function AdminPage() {
       setConversations(data.conversations ?? [])
       setMessages(data.messages ?? [])
       setPayments(data.payments ?? [])
+      setAgreements(data.agreements ?? [])
     } catch { setError('Network error.') }
   }, [])
 
@@ -191,6 +204,27 @@ export default function AdminPage() {
   }
 
   const payLink = (amount: number) => PAYPAL_HANDLE ? `https://paypal.me/${PAYPAL_HANDLE}/${amount}` : ''
+
+  // ── Agreements ───────────────────────────────────────────────────────────
+  const getLeadAgreements = (leadId: string) => agreements.filter((a) => a.lead_id === leadId)
+  const [agScope, setAgScope] = useState('')
+  const [agPrice, setAgPrice] = useState('')
+  const [agBusy, setAgBusy] = useState(false)
+
+  const createAgreement = async (leadId: string) => {
+    if (!session || !agScope.trim() || !Number(agPrice) || agBusy) return
+    setAgBusy(true)
+    try {
+      const res = await fetch('/api/admin/agreements', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead_id: leadId, scope: agScope.trim(), price: Number(agPrice) }),
+      })
+      const data = await res.json()
+      if (data.agreement) { setAgreements((a) => [data.agreement, ...a]); setAgScope(''); setAgPrice('') }
+    } catch { /* ignore */ }
+    setAgBusy(false)
+  }
 
   // ── Live reply (human takeover) ──────────────────────────────────────────
   const [replyText, setReplyText] = useState('')
@@ -453,6 +487,34 @@ export default function AdminPage() {
                     <button onClick={() => createPayment(selected.id)} disabled={!payDesc.trim() || !Number(payAmount)} style={{ ...s.actionBtn, background: GOLD, color: '#000', border: 'none', padding: '8px 14px', fontSize: 13, cursor: 'pointer', opacity: (!payDesc.trim() || !Number(payAmount)) ? 0.4 : 1 }}>Request</button>
                   </div>
                   {!PAYPAL_HANDLE && <p style={{ color: '#a66', fontSize: 11, marginTop: 6 }}>⚠️ Set your PayPal.Me handle to generate pay links.</p>}
+                </div>
+
+                {/* ── Agreements ── */}
+                <div style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid #222' }}>
+                  <div style={{ ...s.fieldLabel, marginBottom: 10 }}>📄 Agreements</div>
+
+                  {getLeadAgreements(selected.id).map((a) => (
+                    <div key={a.id} style={{ padding: '10px 12px', background: '#141414', border: '1px solid #222', borderRadius: 10, marginBottom: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: '#eee', fontSize: 14 }}>${Number(a.price).toLocaleString()} <span style={{ color: '#888', fontSize: 12 }}>· {a.scope.slice(0, 40)}</span></span>
+                        <span style={{ ...s.smallBadge, background: a.status === 'accepted' ? '#1a2a1a' : '#2a2a14', color: a.status === 'accepted' ? '#4d4' : GOLD }}>
+                          {a.status === 'accepted' ? '✓ signed' : 'sent'}
+                        </span>
+                      </div>
+                      {a.accepted_at && <div style={{ color: '#666', fontSize: 11, marginTop: 4 }}>Signed by {a.signer_name} · {new Date(a.accepted_at).toLocaleString()}</div>}
+                    </div>
+                  ))}
+
+                  <div style={{ marginTop: 10 }}>
+                    <textarea value={agScope} onChange={(e) => setAgScope(e.target.value)} placeholder="Agreed scope (e.g. Custom barbershop website with online booking + domain setup)" rows={2} style={{ ...s.notesInput, marginTop: 0 }} />
+                    <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                      <input value={agPrice} onChange={(e) => setAgPrice(e.target.value)} type="number" placeholder="Total $" style={{ width: 100, padding: '8px 10px', background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, color: '#eee', fontSize: 13 }} />
+                      <button onClick={() => createAgreement(selected.id)} disabled={agBusy || !agScope.trim() || !Number(agPrice)} style={{ ...s.actionBtn, flex: 1, background: GOLD, color: '#000', border: 'none', cursor: 'pointer', opacity: (agBusy || !agScope.trim() || !Number(agPrice)) ? 0.4 : 1 }}>
+                        {agBusy ? 'Generating…' : '✨ Generate & send agreement'}
+                      </button>
+                    </div>
+                    <p style={{ color: '#666', fontSize: 11, marginTop: 6 }}>The AI drafts a professional agreement; the client signs it on their account.</p>
+                  </div>
                 </div>
               </div>
             ) : (
