@@ -39,6 +39,7 @@ export default function ChatWidget() {
   const [user, setUser] = useState<GoogleUser | null>(null)
   const [signingIn, setSigningIn] = useState(false)
   const [repActive, setRepActive] = useState(false)
+  const [teaser, setTeaser] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const lastPollRef = useRef<string>(new Date().toISOString())
   const historyLoadedRef = useRef(false)
@@ -46,15 +47,12 @@ export default function ChatWidget() {
   useEffect(() => {
     if (isAdmin) return
     const t = setTimeout(() => setVisible(true), 1500)
-    // Proactively open the chat once per session to nudge visitors to engage
-    let autoT: ReturnType<typeof setTimeout> | undefined
-    if (typeof window !== 'undefined' && !sessionStorage.getItem('sage_nudged')) {
-      autoT = setTimeout(() => {
-        sessionStorage.setItem('sage_nudged', '1')
-        setOpen(true)
-      }, 6000)
+    // Gentle, dismissible teaser (never auto-opens the panel)
+    let teaseT: ReturnType<typeof setTimeout> | undefined
+    if (typeof window !== 'undefined' && !sessionStorage.getItem('sage_teased')) {
+      teaseT = setTimeout(() => setTeaser(true), 12000)
     }
-    return () => { clearTimeout(t); if (autoT) clearTimeout(autoT) }
+    return () => { clearTimeout(t); if (teaseT) clearTimeout(teaseT) }
   }, [isAdmin])
 
   // Allow any part of the site to open the chat: window.dispatchEvent(new Event('open-chat'))
@@ -331,6 +329,25 @@ export default function ChatWidget() {
           <p className="mt-1.5 text-center text-[10px] text-gray-600">AI assistant · answers about Seliem.dev only</p>
         </div>
       </div>
+
+      {/* ── Gentle teaser (dismissible, never auto-opens) ── */}
+      {!open && teaser && (
+        <div className="flex items-center gap-2 rounded-2xl rounded-br-sm border border-[#c9a84c]/25 bg-[#141414] px-3.5 py-2.5 shadow-xl shadow-black/40" style={{ maxWidth: 230 }}>
+          <button
+            onClick={() => { setTeaser(false); sessionStorage.setItem('sage_teased', '1'); setOpen(true) }}
+            className="text-left text-[13px] leading-snug text-gray-200"
+          >
+            👋 Have a question? I&apos;m here to help.
+          </button>
+          <button
+            onClick={() => { setTeaser(false); sessionStorage.setItem('sage_teased', '1') }}
+            aria-label="Dismiss"
+            className="shrink-0 text-gray-500 hover:text-white"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* ── Trigger bubble ── */}
       {!open && (
