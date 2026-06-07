@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
+import { motion } from 'framer-motion'
 import { CheckCircle, AlertCircle, Loader2, Send, X } from 'lucide-react'
 import type { ContactFormData, FormStatus } from '@/types'
 
@@ -14,9 +15,17 @@ const budgetOptions = [
   'Not sure yet',
 ]
 
+const fadeUp = {
+  hidden: { y: 20, opacity: 0 },
+  visible: (d: number) => ({
+    y: 0,
+    opacity: 1,
+    transition: { delay: d, duration: 0.6, ease: [0.22, 1, 0.36, 1] },
+  }),
+}
+
 /* ─── Privacy Policy Modal ─────────────────────────────────────────── */
 function PrivacyModal({ onClose }: { onClose: () => void }) {
-  // Trap focus and close on Escape
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -50,7 +59,7 @@ function PrivacyModal({ onClose }: { onClose: () => void }) {
           <h2 id="privacy-modal-title" className="text-xl font-bold text-white mb-1">
             Privacy Policy
           </h2>
-          <p className="text-xs text-gray-600 mb-6">Last updated: April 2025</p>
+          <p className="text-xs text-gray-600 mb-6">Last updated: June 2026</p>
 
           <div className="space-y-5 text-sm text-gray-400 leading-relaxed">
             <section>
@@ -107,7 +116,6 @@ function PrivacyModal({ onClose }: { onClose: () => void }) {
 export default function LeadForm() {
   const [status,      setStatus]      = useState<FormStatus>('idle')
   const [showPrivacy, setShowPrivacy] = useState(false)
-  const sectionRef = useRef<HTMLDivElement>(null)
 
   const {
     register,
@@ -120,26 +128,6 @@ export default function LeadForm() {
   })
 
   const selectedBudget = watch('budget')
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.querySelectorAll('[data-animate]').forEach((el, i) => {
-              setTimeout(() => {
-                ;(el as HTMLElement).style.opacity = '1'
-                ;(el as HTMLElement).style.transform = 'translateY(0)'
-              }, i * 80)
-            })
-          }
-        })
-      },
-      { threshold: 0.1 },
-    )
-    if (sectionRef.current) observer.observe(sectionRef.current)
-    return () => observer.disconnect()
-  }, [])
 
   const onSubmit = async (data: ContactFormData) => {
     setStatus('loading')
@@ -167,7 +155,6 @@ export default function LeadForm() {
       {showPrivacy && <PrivacyModal onClose={() => setShowPrivacy(false)} />}
 
       <section
-        ref={sectionRef}
         id="lead-form"
         aria-label="Get your website — contact form"
         className="section-padding relative overflow-hidden bg-[#0c0c0c]"
@@ -181,33 +168,29 @@ export default function LeadForm() {
 
             {/* Left column */}
             <div className="lg:col-span-2">
-              <p
-                data-animate
-                style={{ opacity: 0, transform: 'translateY(20px)', transition: 'opacity 0.5s ease-out, transform 0.5s ease-out' }}
+              <motion.p
+                variants={fadeUp} custom={0} initial="hidden" whileInView="visible" viewport={{ once: true }}
                 className="text-xs font-semibold uppercase tracking-widest text-[#c9a84c] mb-3"
               >
                 Get Your Website
-              </p>
-              <h2
-                data-animate
-                style={{ opacity: 0, transform: 'translateY(24px)', transition: 'opacity 0.6s ease-out 80ms, transform 0.6s ease-out 80ms' }}
+              </motion.p>
+              <motion.h2
+                variants={fadeUp} custom={0.08} initial="hidden" whileInView="visible" viewport={{ once: true }}
                 className="text-4xl sm:text-5xl font-black text-white leading-tight mb-5"
               >
                 Let&apos;s build something{' '}
                 <span className="gold-text">worth showing off.</span>
-              </h2>
-              <p
-                data-animate
-                style={{ opacity: 0, transform: 'translateY(20px)', transition: 'opacity 0.6s ease-out 160ms, transform 0.6s ease-out 160ms' }}
+              </motion.h2>
+              <motion.p
+                variants={fadeUp} custom={0.16} initial="hidden" whileInView="visible" viewport={{ once: true }}
                 className="text-gray-400 text-base leading-relaxed mb-8"
               >
                 Tell me about your business and what you&apos;re looking for. I&apos;ll get back to you
                 within 24 hours.
-              </p>
+              </motion.p>
 
-              <div
-                data-animate
-                style={{ opacity: 0, transform: 'translateY(20px)', transition: 'opacity 0.6s ease-out 240ms, transform 0.6s ease-out 240ms' }}
+              <motion.div
+                variants={fadeUp} custom={0.24} initial="hidden" whileInView="visible" viewport={{ once: true }}
                 className="space-y-3"
               >
                 {[
@@ -221,13 +204,12 @@ export default function LeadForm() {
                     <span className="text-sm text-gray-400">{item}</span>
                   </div>
                 ))}
-              </div>
+              </motion.div>
             </div>
 
             {/* Form */}
-            <div
-              data-animate
-              style={{ opacity: 0, transform: 'translateY(24px)', transition: 'opacity 0.6s ease-out 200ms, transform 0.6s ease-out 200ms' }}
+            <motion.div
+              variants={fadeUp} custom={0.2} initial="hidden" whileInView="visible" viewport={{ once: true }}
               className="lg:col-span-3"
             >
               <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-6 sm:p-8">
@@ -444,7 +426,7 @@ export default function LeadForm() {
                   </form>
                 )}
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>

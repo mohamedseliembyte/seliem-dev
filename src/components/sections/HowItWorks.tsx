@@ -109,7 +109,7 @@ export default function HowItWorks() {
           className="mt-20 text-center"
         >
           <a
-            href="#contact"
+            href="#lead-form"
             className="inline-flex items-center gap-3 px-8 py-4 rounded-lg text-base font-semibold gold-gradient text-black hover:shadow-xl hover:shadow-[#c9a84c]/25 hover:scale-[1.02] transition-all duration-200"
           >
             Start the Process

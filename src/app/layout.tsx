@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     type: 'website',
     images: [
       {
-        url: '/logo.png',
+        url: '/api/og',
         width: 1200,
         height: 630,
         alt: 'Seliem.dev — Premium Websites & AI Automations',
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     title: 'Seliem.dev — Premium Websites & AI Automations',
     description:
       'Premium websites and AI automations built to help you get noticed, capture leads, and turn visitors into action.',
-    images: ['/logo.png'],
+    images: ['/api/og'],
   },
   icons: {
     icon: '/logo.png',

@@ -103,7 +103,7 @@ export default function Services() {
               <p className="text-gray-400 leading-relaxed max-w-2xl">{featured.description}</p>
             </div>
             <a
-              href="#contact"
+              href="#lead-form"
               className="shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold gold-gradient text-black hover:shadow-lg hover:shadow-[#c9a84c]/25 hover:scale-[1.02] transition-all duration-200"
             >
               Get Started

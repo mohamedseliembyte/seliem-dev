@@ -249,7 +249,7 @@ export default function Hero() {
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
               </a>
               <a
-                href="#contact"
+                href="#lead-form"
                 className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-lg text-base font-semibold border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10 hover:border-[#c9a84c]/70 transition-all duration-200"
               >
                 Start Your Website
@@ -281,6 +281,14 @@ export default function Hero() {
                 </div>
               ))}
             </motion.div>
+
+            <motion.a
+              href="#how-it-works"
+              custom={0.95} variants={fadeUp} initial="hidden" animate="visible"
+              className="mt-3 inline-flex items-center gap-1 text-xs text-gray-600 hover:text-[#c9a84c] transition-colors duration-200"
+            >
+              See how it works <ArrowRight className="w-3 h-3" />
+            </motion.a>
           </div>
 
           {/* Right: Orbiting demo cards */}
