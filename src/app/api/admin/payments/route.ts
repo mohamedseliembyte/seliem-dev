@@ -30,8 +30,11 @@ export async function POST(req: NextRequest) {
   const lead_id = body.lead_id
   const description = (body.description ?? '').trim()
   const amount = Number(body.amount)
-  if (!lead_id || !description || !amount || amount <= 0) {
-    return NextResponse.json({ error: 'lead_id, description and a positive amount are required' }, { status: 400 })
+  if (!lead_id || !description) {
+    return NextResponse.json({ error: 'lead_id and description are required' }, { status: 400 })
+  }
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return NextResponse.json({ error: 'amount must be a finite number greater than 0' }, { status: 400 })
   }
 
   const { data, error } = await supabase

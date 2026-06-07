@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
 
   let reminded = 0
   for (const p of pending ?? []) {
+    if (!(Number(p.amount) > 0)) continue // skip invalid/zero-amount payments
     if (p.created_at > olderThan1Day) continue // give them a day before nudging
     if (p.last_reminded_at && p.last_reminded_at > remindCutoff) continue
 

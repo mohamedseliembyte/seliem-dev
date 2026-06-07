@@ -1,7 +1,11 @@
 // Google Identity Services popup flow — never shows supabase.co to the user.
 // The popup says "Sign in to Seliem.dev" (the Google Cloud app name).
 
-const GOOGLE_CLIENT_ID = '384196746759-lcvl1q6objpvlm59b679ng31e29q0grl.apps.googleusercontent.com'
+// Prefer the env var; fall back to the original literal so existing prod keeps
+// working if the var hasn't been set yet. Move this to env everywhere.
+const GOOGLE_CLIENT_ID =
+  process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+  '384196746759-lcvl1q6objpvlm59b679ng31e29q0grl.apps.googleusercontent.com'
 
 export type GoogleUser = {
   email: string
