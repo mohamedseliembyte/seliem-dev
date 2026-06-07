@@ -67,6 +67,16 @@ type Agreement = {
   signer_name: string | null
 }
 
+type Task = {
+  id: string
+  title: string
+  status: string
+  due_date: string | null
+  lead_id: string | null
+  completed_at: string | null
+  created_at: string
+}
+
 // Your PayPal.Me handle (set NEXT_PUBLIC_PAYPAL_HANDLE in env)
 const PAYPAL_HANDLE = process.env.NEXT_PUBLIC_PAYPAL_HANDLE || ''
 
@@ -96,6 +106,7 @@ export default function AdminPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
   const [agreements, setAgreements] = useState<Agreement[]>([])
+  const [tasks, setTasks] = useState<Task[]>([])
   const [error, setError] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Lead | null>(null)
@@ -115,6 +126,11 @@ export default function AdminPage() {
       setMessages(data.messages ?? [])
       setPayments(data.payments ?? [])
       setAgreements(data.agreements ?? [])
+      // Tasks live on a separate route
+      try {
+        const tRes = await fetch('/api/admin/tasks', { headers: { Authorization: `Bearer ${token}` } })
+        if (tRes.ok) { const t = await tRes.json(); setTasks(t.tasks ?? []) }
+      } catch { /* tasks are optional */ }
     } catch { setError('Network error.') }
   }, [])
 
@@ -230,6 +246,44 @@ export default function AdminPage() {
     setAgBusy(false)
   }
 
+  // ── Tasks ──────────────────────────────────────────────────────────────────
+  const [showTasks, setShowTasks] = useState(false)
+  const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [newTaskDue, setNewTaskDue] = useState('')
+  const [newTaskLead, setNewTaskLead] = useState('')
+  const [taskBusy, setTaskBusy] = useState(false)
+
+  const createTask = async () => {
+    const title = newTaskTitle.trim()
+    if (!session || !title || taskBusy) return
+    setTaskBusy(true)
+    try {
+      const res = await fetch('/api/admin/tasks', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, due_date: newTaskDue || null, lead_id: newTaskLead || null }),
+      })
+      const data = await res.json()
+      if (data.task) { setTasks((t) => [data.task, ...t]); setNewTaskTitle(''); setNewTaskDue(''); setNewTaskLead('') }
+    } catch { /* ignore */ }
+    setTaskBusy(false)
+  }
+
+  const setTaskStatus = async (id: string, status: string) => {
+    if (!session) return
+    try {
+      await fetch('/api/admin/tasks', {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status }),
+      })
+      setTasks((t) => t.map((x) => x.id === id ? { ...x, status, completed_at: status === 'done' ? new Date().toISOString() : null } : x))
+    } catch { /* ignore */ }
+  }
+
+  const leadName = (id: string | null) => id ? (leads.find((l) => l.id === id)?.name ?? null) : null
+  const openTasks = tasks.filter((t) => t.status !== 'done').length
+
   // ── Live reply (human takeover) ──────────────────────────────────────────
   const [replyText, setReplyText] = useState('')
   const [sendingReply, setSendingReply] = useState(false)
@@ -304,6 +358,9 @@ export default function AdminPage() {
           <h1 style={{ color: GOLD, margin: 0, fontSize: 18 }}>Admin</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={() => setShowTasks(true)} style={s.signOutBtn}>
+            📋 Tasks{openTasks > 0 ? ` (${openTasks})` : ''}
+          </button>
           <span style={{ color: '#888', fontSize: 13 }}>{session.user.email}</span>
           <button onClick={signOut} style={s.signOutBtn}>Sign out</button>
         </div>
@@ -365,6 +422,53 @@ export default function AdminPage() {
           )
         })}
       </div>
+
+      {/* ── Tasks drawer ───────────────────────────────────────────────────── */}
+      {showTasks && (
+        <div style={s.overlay} onClick={() => setShowTasks(false)}>
+          <div style={s.drawer} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ color: GOLD, margin: 0, fontSize: 20 }}>📋 Tasks</h2>
+              <button onClick={() => setShowTasks(false)} style={s.closeBtn}>✕</button>
+            </div>
+
+            {/* Create task */}
+            <div style={{ marginBottom: 20 }}>
+              <input value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') createTask() }} placeholder="New task…" style={{ width: '100%', padding: '10px 12px', background: '#0a0a0a', border: '1px solid #222', borderRadius: 10, color: '#eee', fontSize: 14 }} />
+              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                <input value={newTaskDue} onChange={(e) => setNewTaskDue(e.target.value)} type="date" title="Due date (optional)" style={{ flex: 1, padding: '8px 10px', background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, color: '#eee', fontSize: 13 }} />
+                <select value={newTaskLead} onChange={(e) => setNewTaskLead(e.target.value)} title="Link to a lead (optional)" style={{ flex: 1, padding: '8px 10px', background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, color: '#eee', fontSize: 13 }}>
+                  <option value="">No lead</option>
+                  {leads.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </select>
+                <button onClick={createTask} disabled={taskBusy || !newTaskTitle.trim()} style={{ ...s.actionBtn, background: GOLD, color: '#000', border: 'none', cursor: 'pointer', opacity: (taskBusy || !newTaskTitle.trim()) ? 0.4 : 1 }}>Add</button>
+              </div>
+            </div>
+
+            {tasks.length === 0 && <p style={{ color: '#777', textAlign: 'center', padding: 20 }}>No tasks yet.</p>}
+
+            <div style={{ display: 'grid', gap: 8 }}>
+              {tasks.map((t) => {
+                const done = t.status === 'done'
+                const ln = leadName(t.lead_id)
+                const overdue = !done && t.due_date && new Date(t.due_date).getTime() < Date.now()
+                return (
+                  <div key={t.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', background: '#141414', border: '1px solid #222', borderRadius: 10 }}>
+                    <input type="checkbox" checked={done} onChange={() => setTaskStatus(t.id, done ? 'open' : 'done')} style={{ marginTop: 3, cursor: 'pointer' }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ color: done ? '#666' : '#eee', fontSize: 14, textDecoration: done ? 'line-through' : 'none' }}>{t.title}</div>
+                      <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: 11, color: '#777', flexWrap: 'wrap' }}>
+                        {t.due_date && <span style={{ color: overdue ? '#e88' : '#777' }}>📅 {new Date(t.due_date).toLocaleDateString()}{overdue ? ' · overdue' : ''}</span>}
+                        {ln && <span>👤 {ln}</span>}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Detail drawer ──────────────────────────────────────────────────── */}
       {selected && (
