@@ -33,10 +33,24 @@ export async function generateBriefing(): Promise<string> {
   const supabase = getSupabaseAdmin()
   if (!supabase) return '🚀 Good Morning Mohamed\n\n⚠️ Database not configured — no data available.'
 
-  const dayAgo = new Date(Date.now() - 86_400_000).toISOString()
-  const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString()
+  const now = Date.now()
+  const dayAgo = new Date(now - 86_400_000).toISOString()
+  const weekAgo = new Date(now - 7 * 86_400_000).toISOString()
+  const twoWeeksAgo = new Date(now - 14 * 86_400_000).toISOString()
   const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0)
   const endOfDay = new Date(); endOfDay.setHours(23, 59, 59, 999)
+
+  // Count rows whose `col` falls in [from, to), optionally with an extra filter.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rangeCount = (table: string, col: string, from: string, to: string, extra?: (q: any) => any) =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    count(supabase, table, (q: any) => { const qq = q.gte(col, from).lt(col, to); return extra ? extra(qq) : qq })
+
+  // Format a week-over-week delta suffix, e.g. " (+3 vs last week)".
+  const wow = (cur: number, prev: number): string => {
+    const d = cur - prev
+    return ` (${d > 0 ? `+${d}` : d < 0 ? `${d}` : '±0'} vs last week)`
+  }
 
   // ── Leads ──
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -62,6 +76,18 @@ export async function generateBriefing(): Promise<string> {
     q.eq('status', 'open').gte('due_date', startOfDay.toISOString()).lte('due_date', endOfDay.toISOString()),
   )
 
+  // ── Week-over-week trends (this 7 days vs the prior 7 days) ──
+  const newLeadsWeek = await rangeCount('leads', 'created_at', weekAgo, new Date(now).toISOString())
+  const newLeadsPrevWeek = await rangeCount('leads', 'created_at', twoWeeksAgo, weekAgo)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const paidWeek = await rangeCount('payments', 'paid_at', weekAgo, new Date(now).toISOString(), (q: any) => q.eq('status', 'paid'))
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const paidPrevWeek = await rangeCount('payments', 'paid_at', twoWeeksAgo, weekAgo, (q: any) => q.eq('status', 'paid'))
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const signedWeek = await rangeCount('agreements', 'accepted_at', weekAgo, new Date(now).toISOString(), (q: any) => q.eq('status', 'accepted'))
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const signedPrevWeek = await rangeCount('agreements', 'accepted_at', twoWeeksAgo, weekAgo, (q: any) => q.eq('status', 'accepted'))
+
   // ── Alerts ──
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const uncontacted = await count(supabase, 'leads', (q: any) => q.eq('status', 'new'))
@@ -80,16 +106,19 @@ export async function generateBriefing(): Promise<string> {
     '🚀 <b>Good Morning Mohamed</b>',
     '',
     '📈 <b>Leads</b>',
-    `• New Leads: ${newLeads}`,
+    `• New Leads (7d): ${newLeadsWeek}${wow(newLeadsWeek, newLeadsPrevWeek)}`,
+    `• New Today: ${newLeads}`,
     `• Total Leads: ${totalLeads}`,
     '',
     '💼 <b>Projects</b>',
     `• Active Projects: ${activeProjects}`,
     `• Completed Projects: ${completedProjects}`,
+    `• Agreements Signed (7d): ${signedWeek}${wow(signedWeek, signedPrevWeek)}`,
     '',
     '💰 <b>Payments</b>',
     `• Unpaid Invoices: ${unpaid}`,
     `• Overdue Invoices: ${overdue}`,
+    `• Paid (7d): ${paidWeek}${wow(paidWeek, paidPrevWeek)}`,
     '',
     '📋 <b>Tasks</b>',
     `• Tasks Due Today: ${tasksDueToday}`,
