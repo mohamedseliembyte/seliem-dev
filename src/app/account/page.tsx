@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { getSupabaseBrowser } from '@/lib/supabase-client'
 import { googlePopupSignIn, exchangeGoogleToken } from '@/lib/google-auth'
+import { downloadAgreementPdf } from '@/lib/agreement-pdf'
 
 type Lead = {
   id: string
@@ -167,6 +168,12 @@ export default function AccountPage() {
                     ) : (
                       <p className="mt-3 text-xs text-gray-500">Signed on {a.accepted_at ? new Date(a.accepted_at).toLocaleString() : ''}</p>
                     )}
+                    <button
+                      onClick={() => downloadAgreementPdf({ ...a, clientName: (session.user.user_metadata?.full_name as string) ?? (session.user.user_metadata?.name as string) ?? session.user.email ?? null })}
+                      className="mt-3 w-full rounded-xl border border-white/15 py-2.5 text-sm font-semibold text-gray-300 transition hover:text-white"
+                    >
+                      ⬇ Download PDF
+                    </button>
                   </div>
                 ))}
               </>

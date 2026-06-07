@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { getSupabaseBrowser } from '@/lib/supabase-client'
 import { googlePopupSignIn, exchangeGoogleToken } from '@/lib/google-auth'
+import { downloadAgreementPdf } from '@/lib/agreement-pdf'
 
 /* ── Types ────────────────────────────────────────────────────────────────── */
 type Lead = {
@@ -504,9 +505,14 @@ export default function AdminPage() {
                         </span>
                       </div>
                       {a.accepted_at && <div style={{ color: '#666', fontSize: 11, marginTop: 4 }}>Signed by {a.signer_name} · {new Date(a.accepted_at).toLocaleString()}</div>}
-                      <button onClick={() => setViewAg(viewAg === a.id ? null : a.id)} style={{ background: 'transparent', border: 'none', color: GOLD, fontSize: 12, cursor: 'pointer', padding: '6px 0 0' }}>
-                        {viewAg === a.id ? '▲ Hide agreement' : '▼ View full agreement'}
-                      </button>
+                      <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                        <button onClick={() => setViewAg(viewAg === a.id ? null : a.id)} style={{ background: 'transparent', border: 'none', color: GOLD, fontSize: 12, cursor: 'pointer', padding: '6px 0 0' }}>
+                          {viewAg === a.id ? '▲ Hide agreement' : '▼ View full agreement'}
+                        </button>
+                        <button onClick={() => downloadAgreementPdf({ ...a, clientName: selected.name })} style={{ background: 'transparent', border: 'none', color: GOLD, fontSize: 12, cursor: 'pointer', padding: '6px 0 0' }}>
+                          ⬇ Download PDF
+                        </button>
+                      </div>
                       {viewAg === a.id && (
                         <pre style={{ marginTop: 8, padding: 12, background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, color: '#ccc', whiteSpace: 'pre-wrap', fontSize: 12, lineHeight: 1.5, fontFamily: 'inherit', maxHeight: 280, overflowY: 'auto' }}>{a.content}</pre>
                       )}
