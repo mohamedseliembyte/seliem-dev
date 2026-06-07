@@ -113,6 +113,9 @@ export default function AdminPage() {
   const [tab, setTab] = useState<'details' | 'chat'>('details')
   const [filter, setFilter] = useState<string>('all')
   const [saving, setSaving] = useState(false)
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const loadData = useCallback(async (token: string) => {
     setError(null)
@@ -330,7 +333,37 @@ export default function AdminPage() {
     return () => clearInterval(id)
   }, [selected, tab, conversations])
 
-  const filtered = filter === 'all' ? leads : leads.filter((l) => l.status === filter)
+  const inRange = (iso: string) => {
+    const t = new Date(iso).getTime()
+    if (dateFrom && t < new Date(dateFrom).getTime()) return false
+    if (dateTo && t > new Date(dateTo).getTime() + 86_400_000) return false // include the whole end day
+    return true
+  }
+  const filtered = leads.filter((l) => (filter === 'all' || l.status === filter) && inRange(l.created_at))
+
+  const toggleSelect = (id: string) => setSelectedIds((prev) => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return next
+  })
+
+  const bulkSetStatus = async (status: string) => {
+    const ids = Array.from(selectedIds)
+    for (const id of ids) await updateLead(id, { status })
+    setSelectedIds(new Set())
+  }
+
+  const exportCsv = () => {
+    const cols = ['customer_no', 'name', 'email', 'phone', 'business_name', 'business_type', 'budget', 'status', 'domain_status', 'duplicate_count', 'created_at'] as const
+    const cell = (v: unknown) => { const str = String(v ?? ''); return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str }
+    const csv = [cols.join(','), ...filtered.map((l) => cols.map((c) => cell((l as Record<string, unknown>)[c])).join(','))].join('\n')
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `leads-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   /* ── Loading ─────────────────────────────────────────────────────────────── */
   if (loading) return <div style={s.center}><p style={{ color: '#888' }}>Loading…</p></div>
@@ -383,6 +416,28 @@ export default function AdminPage() {
         })}
       </div>
 
+      {/* Filter + export toolbar */}
+      <div style={{ display: 'flex', gap: 10, padding: '10px 24px', alignItems: 'center', flexWrap: 'wrap', borderBottom: '1px solid #1c1c1c' }}>
+        <span style={{ color: '#777', fontSize: 12 }}>Date range:</span>
+        <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} style={s.dateInput} />
+        <span style={{ color: '#555' }}>→</span>
+        <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} style={s.dateInput} />
+        {(dateFrom || dateTo) && <button onClick={() => { setDateFrom(''); setDateTo('') }} style={s.signOutBtn}>Clear</button>}
+        <span style={{ color: '#666', fontSize: 12 }}>{filtered.length} shown</span>
+        <button onClick={exportCsv} disabled={filtered.length === 0} style={{ ...s.signOutBtn, marginLeft: 'auto', opacity: filtered.length === 0 ? 0.4 : 1 }}>⬇ Export CSV</button>
+      </div>
+
+      {/* Bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div style={{ display: 'flex', gap: 8, padding: '10px 24px', alignItems: 'center', flexWrap: 'wrap', background: '#15150c', borderBottom: '1px solid #2a2a14' }}>
+          <span style={{ color: GOLD, fontSize: 13 }}>{selectedIds.size} selected — set status:</span>
+          {STATUSES.map((st) => (
+            <button key={st} onClick={() => bulkSetStatus(st)} disabled={saving} style={{ ...s.smallBadge, background: STATUS_COLORS[st].bg, color: STATUS_COLORS[st].text, border: '1px solid #333', cursor: 'pointer', padding: '4px 10px' }}>{st}</button>
+          ))}
+          <button onClick={() => setSelectedIds(new Set())} style={{ ...s.signOutBtn, marginLeft: 'auto' }}>Clear selection</button>
+        </div>
+      )}
+
       {error && <div style={s.error}>{error}</div>}
 
       {!error && filtered.length === 0 && (
@@ -397,7 +452,15 @@ export default function AdminPage() {
           const sc = STATUS_COLORS[lead.status] ?? STATUS_COLORS.new
           const convos = getLeadConversations(lead.id)
           return (
-            <button key={lead.id} onClick={() => { setSelected(lead); setTab(getLeadConversations(lead.id).length > 0 ? 'chat' : 'details') }} style={s.row}>
+            <div key={lead.id} style={{ display: 'flex', alignItems: 'stretch', gap: 8 }}>
+            <input
+              type="checkbox"
+              checked={selectedIds.has(lead.id)}
+              onChange={() => toggleSelect(lead.id)}
+              title="Select for bulk action"
+              style={{ marginTop: 18, cursor: 'pointer' }}
+            />
+            <button onClick={() => { setSelected(lead); setTab(getLeadConversations(lead.id).length > 0 ? 'chat' : 'details') }} style={{ ...s.row, flex: 1 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 600, color: '#eee' }}>
                   {lead.customer_no && <span style={{ color: '#666', fontWeight: 400, fontSize: 12, marginRight: 6 }}>#{lead.customer_no}</span>}
@@ -419,6 +482,7 @@ export default function AdminPage() {
                 <span>{timeAgo(lead.created_at)}</span>
               </div>
             </button>
+            </div>
           )
         })}
       </div>
@@ -743,4 +807,5 @@ const s = {
   tab: { background: 'transparent', border: 'none', borderBottom: '2px solid transparent', padding: '8px 16px', cursor: 'pointer', fontSize: 14, transition: 'all 0.15s' } as React.CSSProperties,
   notesInput: { width: '100%', marginTop: 4, padding: 10, background: '#0a0a0a', border: '1px solid #222', borderRadius: 10, color: '#ddd', fontSize: 13, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 } as React.CSSProperties,
   actionBtn: { background: '#1c1c1c', color: '#eee', border: '1px solid #333', borderRadius: 8, padding: '10px 16px', textDecoration: 'none', fontSize: 14, transition: 'all 0.15s' } as React.CSSProperties,
+  dateInput: { background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, color: '#ddd', fontSize: 13, padding: '5px 8px', colorScheme: 'dark' } as React.CSSProperties,
 }
