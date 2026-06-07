@@ -11,13 +11,31 @@ type Msg = { role: 'user' | 'assistant' | 'rep'; content: string }
 const GREETING =
   "Hi! 👋 I'm Sage, the Seliem.dev assistant. Looking for a website, an AI automation, or both? Tell me a bit about your project and I'll help you get started."
 
+const SESSION_KEY = 'sage_session'
+const SESSION_MAX_AGE = 60 * 60 * 24 * 365 // 1 year
+
+function readCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null
+  const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'))
+  return m ? decodeURIComponent(m[1]) : null
+}
+
+function writeCookie(name: string, value: string) {
+  if (typeof document === 'undefined') return
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${SESSION_MAX_AGE}; SameSite=Lax`
+}
+
+// Anonymous session id with a cookie fallback: persisted to BOTH localStorage
+// and a long-lived cookie, so clearing one (e.g. localStorage) recovers the id
+// from the other and the visitor's chat history survives.
 function getSessionId(): string {
   if (typeof window === 'undefined') return ''
-  let id = localStorage.getItem('sage_session')
+  let id = localStorage.getItem(SESSION_KEY) || readCookie(SESSION_KEY)
   if (!id) {
     id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
-    localStorage.setItem('sage_session', id)
   }
+  try { localStorage.setItem(SESSION_KEY, id) } catch { /* storage disabled */ }
+  writeCookie(SESSION_KEY, id)
   return id
 }
 
