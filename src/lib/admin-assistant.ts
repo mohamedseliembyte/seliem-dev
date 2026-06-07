@@ -57,9 +57,30 @@ export async function buildBusinessContext(): Promise<string> {
   return lines.join('\n')
 }
 
+// ── Rate limit: 20 questions per hour per chat_id ────────────────────────────
+// Protects Groq credits from being drained. In-memory (per server instance),
+// mirroring the tiered limiter in src/app/api/chat/route.ts.
+const ASSISTANT_LIMIT = 20
+const rl = new Map<string, { count: number; resetAt: number }>()
+
+function isLimited(key: string): boolean {
+  const now = Date.now()
+  const e = rl.get(key)
+  if (!e || now > e.resetAt) {
+    rl.set(key, { count: 1, resetAt: now + 3_600_000 })
+    return false
+  }
+  if (e.count >= ASSISTANT_LIMIT) return true
+  e.count++
+  return false
+}
+
 const SYSTEM = `You are Mohamed's private AI business assistant for Seliem.dev, his web design & AI automation agency. Answer his questions about his business using ONLY the live DATA provided. You can count, summarize, identify who hasn't paid, flag what needs attention, and give short practical business advice. Be concise and Telegram-friendly (short paragraphs, simple bullet points with •). If the data doesn't contain something, say so honestly.`
 
-export async function askAdminAssistant(question: string): Promise<string> {
+export async function askAdminAssistant(question: string, chatId?: string): Promise<string> {
+  if (isLimited(chatId || 'global')) {
+    return "⏳ You've hit the hourly limit (20 questions). Give it a little while and try again."
+  }
   try {
     const context = await buildBusinessContext()
     const messages: ChatMessage[] = [

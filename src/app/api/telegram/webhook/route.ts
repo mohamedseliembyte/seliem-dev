@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true })
   }
 
-  const answer = await askAdminAssistant(text)
+  const answer = await askAdminAssistant(text, String(chatId))
   await sendTelegramMessage(answer)
   return NextResponse.json({ ok: true })
 }
