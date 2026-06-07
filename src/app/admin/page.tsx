@@ -25,6 +25,7 @@ type Lead = {
   status: string
   notes: string | null
   customer_no: number | null
+  duplicate_count: number | null
 }
 
 type Conversation = {
@@ -346,6 +347,7 @@ export default function AdminPage() {
                   {lead.name}
                 </span>
                 <div style={{ display: 'flex', gap: 6 }}>
+                  {(lead.duplicate_count ?? 0) > 0 && <span style={{ ...s.smallBadge, background: '#2a1a1a', color: '#e88' }} title={`${lead.duplicate_count} repeat inquir${(lead.duplicate_count ?? 0) > 1 ? 'ies' : 'y'} merged`}>⚠ possible duplicate</span>}
                   {convos.length > 0 && <span style={{ ...s.smallBadge, background: '#1a1a2a', color: '#88f' }}>💬 Chat</span>}
                   <span style={{ ...s.smallBadge, background: lead.type === 'support' ? '#1c2a3a' : '#2a2414', color: lead.type === 'support' ? '#7ab' : GOLD }}>{lead.type}</span>
                   <span style={{ ...s.smallBadge, background: sc.bg, color: sc.text }}>{lead.status}</span>

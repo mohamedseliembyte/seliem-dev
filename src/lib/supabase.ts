@@ -35,14 +35,51 @@ export type LeadRecord = {
 }
 
 /**
- * Save a lead to the database. Returns the new row's id, or null on failure.
+ * Save a lead to the database. Returns the row's id, or null on failure.
  * Never throws — a DB hiccup must not break the contact form.
+ *
+ * Deduplication: if a lead with the same email (case-insensitive) already
+ * exists, the new inquiry is MERGED into it — the new message is appended, any
+ * previously-missing details are backfilled, and duplicate_count is bumped so
+ * the admin UI can flag it. A brand-new email is inserted as before.
  */
 export async function saveLead(lead: LeadRecord): Promise<string | null> {
   const supabase = getSupabaseAdmin()
   if (!supabase) return null
 
   try {
+    // ── Dedup: merge into an existing lead with the same email ───────────────
+    const email = lead.email.trim()
+    if (email && email.includes('@')) {
+      const { data: existing } = await supabase
+        .from('leads')
+        .select('id, message, duplicate_count, phone, business_name, business_type, budget, goals')
+        .ilike('email', email)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+
+      if (existing?.id) {
+        const stamp = new Date().toISOString().slice(0, 10)
+        const appended = `${existing.message ?? ''}\n\n— Follow-up (${stamp}):\n${lead.message}`.trim()
+        const { error: mErr } = await supabase
+          .from('leads')
+          .update({
+            message:         appended,
+            duplicate_count: (existing.duplicate_count ?? 0) + 1,
+            // Backfill only fields the original lead is missing
+            phone:         existing.phone         || lead.phone         || null,
+            business_name: existing.business_name || lead.business_name || null,
+            business_type: existing.business_type || lead.business_type || null,
+            budget:        existing.budget        || lead.budget        || null,
+            goals:         existing.goals         || lead.goals         || null,
+          })
+          .eq('id', existing.id)
+        if (mErr) console.error('[supabase] saveLead merge error:', mErr.message)
+        return existing.id
+      }
+    }
+
     const { data, error } = await supabase
       .from('leads')
       .insert({
