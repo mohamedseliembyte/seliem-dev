@@ -373,9 +373,9 @@ export default function AdminPage() {
     <div style={s.center}>
       <div style={s.loginCard}>
         <Image src="/logo.png" alt="Seliem.dev" width={60} height={60} style={{ borderRadius: 12, margin: '0 auto 16px' }} />
-        <h1 style={{ color: GOLD, margin: '0 0 4px', fontSize: 22 }}>Seliem.dev Admin</h1>
+        <h1 className="gold-text" style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800 }}>Seliem.dev Admin</h1>
         <p style={{ color: '#999', margin: '0 0 24px', fontSize: 14 }}>Sign in to manage your leads.</p>
-        <button onClick={signIn} style={s.googleBtn}><span style={{ fontWeight: 600 }}>Sign in with Google</span></button>
+        <button onClick={signIn} className="sheen" style={s.googleBtn}><span style={{ fontWeight: 600 }}>Sign in with Google</span></button>
         {authError && <p style={{ color: '#f88', marginTop: 16, fontSize: 13 }}>{authError}</p>}
       </div>
     </div>
@@ -383,12 +383,12 @@ export default function AdminPage() {
 
   /* ── Dashboard ───────────────────────────────────────────────────────────── */
   return (
-    <div style={s.page}>
+    <div className="hero-grid" style={s.page}>
       {/* Header */}
       <header style={s.header}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Image src="/logo.png" alt="Seliem.dev" width={32} height={32} style={{ borderRadius: 8 }} />
-          <h1 style={{ color: GOLD, margin: 0, fontSize: 18 }}>Admin</h1>
+          <Image src="/logo.png" alt="Seliem.dev" width={32} height={32} style={{ borderRadius: 8, boxShadow: '0 0 0 1px rgba(201,168,76,0.3)' }} />
+          <h1 className="gold-text" style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Admin</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button onClick={() => setShowTasks(true)} style={s.signOutBtn}>
@@ -406,8 +406,9 @@ export default function AdminPage() {
           return (
             <button key={st} onClick={() => setFilter(st)} style={{
               ...s.statPill,
-              background: filter === st ? '#222' : 'transparent',
-              borderColor: filter === st ? '#444' : '#1c1c1c',
+              background: filter === st ? 'rgba(201,168,76,0.12)' : 'transparent',
+              borderColor: filter === st ? 'rgba(201,168,76,0.5)' : '#1c1c1c',
+              color: filter === st ? GOLD : '#ccc',
             }}>
               <span style={{ textTransform: 'capitalize' }}>{st}</span>
               <span style={{ color: '#888', fontSize: 12 }}>({count})</span>
@@ -460,7 +461,7 @@ export default function AdminPage() {
               title="Select for bulk action"
               style={{ marginTop: 18, cursor: 'pointer' }}
             />
-            <button onClick={() => { setSelected(lead); setTab(getLeadConversations(lead.id).length > 0 ? 'chat' : 'details') }} style={{ ...s.row, flex: 1 }}>
+            <button onClick={() => { setSelected(lead); setTab(getLeadConversations(lead.id).length > 0 ? 'chat' : 'details') }} className="card-lift" style={{ ...s.row, flex: 1 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 600, color: '#eee' }}>
                   {lead.customer_no && <span style={{ color: '#666', fontWeight: 400, fontSize: 12, marginRight: 6 }}>#{lead.customer_no}</span>}
@@ -492,7 +493,7 @@ export default function AdminPage() {
         <div style={s.overlay} onClick={() => setShowTasks(false)}>
           <div style={s.drawer} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ color: GOLD, margin: 0, fontSize: 20 }}>📋 Tasks</h2>
+              <h2 className="gold-text" style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>📋 Tasks</h2>
               <button onClick={() => setShowTasks(false)} style={s.closeBtn}>✕</button>
             </div>
 
@@ -541,7 +542,7 @@ export default function AdminPage() {
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div>
-                <h2 style={{ color: GOLD, margin: 0, fontSize: 20 }}>{selected.name}</h2>
+                <h2 className="gold-text" style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>{selected.name}</h2>
                 <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
                   {selected.email}
                   {getLeadConversations(selected.id).some((c) => c.status === 'human') && (
@@ -788,24 +789,24 @@ function timeAgo(iso: string): string {
 
 /* ── Styles ────────────────────────────────────────────────────────────────── */
 const s = {
-  page: { minHeight: '100vh', background: '#0a0a0a', color: '#eee', fontFamily: 'system-ui, sans-serif' } as React.CSSProperties,
-  center: { minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' } as React.CSSProperties,
-  loginCard: { background: '#141414', border: '1px solid #222', borderRadius: 16, padding: 40, textAlign: 'center', maxWidth: 360 } as React.CSSProperties,
-  googleBtn: { background: '#fff', color: '#111', border: 'none', borderRadius: 10, padding: '12px 24px', cursor: 'pointer', width: '100%', fontSize: 15 } as React.CSSProperties,
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid #1c1c1c', position: 'sticky', top: 0, background: '#0a0a0a', zIndex: 10 } as React.CSSProperties,
-  statsBar: { display: 'flex', gap: 6, padding: '12px 24px', overflowX: 'auto', borderBottom: '1px solid #1c1c1c' } as React.CSSProperties,
-  statPill: { display: 'flex', gap: 4, alignItems: 'center', padding: '4px 12px', borderRadius: 999, border: '1px solid #1c1c1c', background: 'transparent', color: '#ccc', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap' } as React.CSSProperties,
-  signOutBtn: { background: 'transparent', color: '#888', border: '1px solid #333', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 13 } as React.CSSProperties,
-  error: { background: '#2a1414', color: '#f88', padding: '12px 24px', margin: 16, borderRadius: 8, border: '1px solid #4a2020' } as React.CSSProperties,
-  list: { padding: 16, display: 'grid', gap: 10, maxWidth: 800, margin: '0 auto' } as React.CSSProperties,
-  row: { textAlign: 'left', background: '#141414', border: '1px solid #222', borderRadius: 12, padding: 16, cursor: 'pointer', color: 'inherit', width: '100%' } as React.CSSProperties,
-  smallBadge: { fontSize: 11, padding: '2px 8px', borderRadius: 999 } as React.CSSProperties,
-  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'flex-end', zIndex: 50 } as React.CSSProperties,
-  drawer: { background: '#111', borderLeft: '1px solid #222', width: 'min(480px, 100%)', height: '100%', padding: 24, overflowY: 'auto' } as React.CSSProperties,
-  closeBtn: { background: 'transparent', color: '#888', border: 'none', fontSize: 18, cursor: 'pointer' } as React.CSSProperties,
-  fieldLabel: { color: '#777', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 } as React.CSSProperties,
+  page: { minHeight: '100vh', background: '#0a0a0a', color: '#eee', fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' } as React.CSSProperties,
+  center: { minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 } as React.CSSProperties,
+  loginCard: { background: 'linear-gradient(180deg,#171717,#0e0e0e)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 24, padding: 40, textAlign: 'center', maxWidth: 360, boxShadow: '0 24px 60px -20px rgba(0,0,0,0.7)' } as React.CSSProperties,
+  googleBtn: { background: 'linear-gradient(135deg,#c9a84c,#f5d485)', color: '#000', border: 'none', borderRadius: 12, padding: '12px 24px', cursor: 'pointer', width: '100%', fontSize: 15, fontWeight: 600 } as React.CSSProperties,
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', position: 'sticky', top: 0, background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(8px)', zIndex: 10 } as React.CSSProperties,
+  statsBar: { display: 'flex', gap: 8, padding: '14px 24px', overflowX: 'auto', borderBottom: '1px solid #141414' } as React.CSSProperties,
+  statPill: { display: 'flex', gap: 6, alignItems: 'center', padding: '6px 14px', borderRadius: 999, border: '1px solid #1c1c1c', background: 'transparent', color: '#ccc', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap', transition: 'all .15s' } as React.CSSProperties,
+  signOutBtn: { background: 'transparent', color: '#aaa', border: '1px solid #2a2a2a', borderRadius: 10, padding: '7px 14px', cursor: 'pointer', fontSize: 13, transition: 'all .15s' } as React.CSSProperties,
+  error: { background: '#2a1414', color: '#f88', padding: '12px 24px', margin: 16, borderRadius: 12, border: '1px solid #4a2020' } as React.CSSProperties,
+  list: { padding: 20, display: 'grid', gap: 12, maxWidth: 820, margin: '0 auto' } as React.CSSProperties,
+  row: { textAlign: 'left', background: 'linear-gradient(180deg,#161616,#121212)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: 18, cursor: 'pointer', color: 'inherit', width: '100%' } as React.CSSProperties,
+  smallBadge: { fontSize: 11, padding: '3px 9px', borderRadius: 999, fontWeight: 500 } as React.CSSProperties,
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(2px)', display: 'flex', justifyContent: 'flex-end', zIndex: 50 } as React.CSSProperties,
+  drawer: { background: 'linear-gradient(180deg,#141414,#0d0d0d)', borderLeft: '1px solid rgba(255,255,255,0.08)', width: 'min(500px, 100%)', height: '100%', padding: 24, overflowY: 'auto', boxShadow: '-24px 0 60px -20px rgba(0,0,0,0.8)' } as React.CSSProperties,
+  closeBtn: { background: 'rgba(255,255,255,0.05)', color: '#aaa', border: '1px solid #2a2a2a', borderRadius: 8, width: 32, height: 32, fontSize: 16, cursor: 'pointer', lineHeight: 1 } as React.CSSProperties,
+  fieldLabel: { color: '#777', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: 600 } as React.CSSProperties,
   tab: { background: 'transparent', border: 'none', borderBottom: '2px solid transparent', padding: '8px 16px', cursor: 'pointer', fontSize: 14, transition: 'all 0.15s' } as React.CSSProperties,
-  notesInput: { width: '100%', marginTop: 4, padding: 10, background: '#0a0a0a', border: '1px solid #222', borderRadius: 10, color: '#ddd', fontSize: 13, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 } as React.CSSProperties,
-  actionBtn: { background: '#1c1c1c', color: '#eee', border: '1px solid #333', borderRadius: 8, padding: '10px 16px', textDecoration: 'none', fontSize: 14, transition: 'all 0.15s' } as React.CSSProperties,
-  dateInput: { background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, color: '#ddd', fontSize: 13, padding: '5px 8px', colorScheme: 'dark' } as React.CSSProperties,
+  notesInput: { width: '100%', marginTop: 4, padding: 12, background: '#0a0a0a', border: '1px solid #222', borderRadius: 12, color: '#ddd', fontSize: 13, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 } as React.CSSProperties,
+  actionBtn: { background: '#1c1c1c', color: '#eee', border: '1px solid #333', borderRadius: 10, padding: '10px 16px', textDecoration: 'none', fontSize: 14, transition: 'all .15s' } as React.CSSProperties,
+  dateInput: { background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, color: '#ddd', fontSize: 13, padding: '6px 10px', colorScheme: 'dark' } as React.CSSProperties,
 }
