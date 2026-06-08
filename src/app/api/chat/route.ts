@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getSupabaseAdmin, saveLead } from '@/lib/supabase'
 import { notifyLead } from '@/lib/telegram'
-import { sendTelegramMessage } from '@/lib/telegram'
+import { sendTelegramMessage, sendTelegramControl } from '@/lib/telegram'
 import { groqChat, SYSTEM_PROMPT, type ChatMessage } from '@/lib/groq'
 import { maybeEmailClientReply } from '@/lib/notify-client'
 
@@ -136,11 +136,21 @@ export async function POST(req: NextRequest) {
     // Save the incoming user message
     await supabase.from('messages').insert({ conversation_id: conversationId, role: 'user', content: message })
 
-    // ── Human takeover: if a rep has joined, pause the AI ───────────────────
-    const humanActive = (history ?? []).some((m) => m.role === 'human')
+    // ── Human takeover: if a rep has taken over, pause the AI ───────────────
+    // Source of truth is the conversation's human_takeover flag (toggled from the
+    // admin drawer or Telegram), so the AI can be handed control back later.
+    const { data: convoRow } = await supabase
+      .from('conversations')
+      .select('human_takeover')
+      .eq('id', conversationId)
+      .maybeSingle()
+    const humanActive = convoRow?.human_takeover === true
     if (humanActive) {
-      // Alert the rep that the visitor replied, and let polling deliver the rep's response
-      void sendTelegramMessage(`💬 <b>Visitor replied in live chat:</b>\n${message}`)
+      // Alert the rep that the visitor replied, with a one-tap "let AI take over".
+      void sendTelegramControl(
+        `💬 <b>Visitor replied in live chat:</b>\n${message}`,
+        [[{ text: '🤖 Let AI take back over', callback_data: `aiOn:${conversationId}` }]],
+      )
       return NextResponse.json({ reply: null, human: true })
     }
 
@@ -225,6 +235,12 @@ export async function POST(req: NextRequest) {
         budget: args.budget,
         goals: args.goals,
       })
+
+      // Offer a one-tap "jump in" so you can take over this live chat from Telegram.
+      void sendTelegramControl(
+        '🟢 Sage is chatting with this lead live.',
+        [[{ text: '✍️ Jump in (pause AI)', callback_data: `jumpIn:${conversationId}` }]],
+      )
 
       // Ask the model for a natural confirmation reply (tool-result turn)
       try {

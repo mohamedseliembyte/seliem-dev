@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
   const { data: convo } = await supabase
     .from('conversations')
-    .select('id')
+    .select('id, human_takeover')
     .eq('session_id', sessionId)
     .maybeSingle()
 
@@ -32,13 +32,6 @@ export async function GET(req: NextRequest) {
 
   const { data: msgs } = await q
 
-  // Has a human taken over this conversation?
-  const { data: humanMsg } = await supabase
-    .from('messages')
-    .select('id')
-    .eq('conversation_id', convo.id)
-    .eq('role', 'human')
-    .limit(1)
-
-  return NextResponse.json({ messages: msgs ?? [], human: (humanMsg?.length ?? 0) > 0 })
+  // Has a human taken over this conversation? (explicit flag, so AI can resume)
+  return NextResponse.json({ messages: msgs ?? [], human: convo.human_takeover === true })
 }

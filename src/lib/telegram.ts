@@ -122,3 +122,48 @@ function leadButtons(lead: LeadAlert): UrlButton[] {
 export async function notifyLead(lead: LeadAlert): Promise<boolean> {
   return sendTelegramMessage(formatLead(lead), leadButtons(lead))
 }
+
+// ── Inline callback controls (handled by the webhook's callback_query) ────────
+
+/** An inline button that fires a callback to the bot instead of opening a URL. */
+export type CallbackButton = { text: string; callback_data: string }
+
+/** Send a message with an inline callback keyboard (rows of buttons). Never throws. */
+export async function sendTelegramControl(text: string, rows: CallbackButton[][]): Promise<boolean> {
+  const token = process.env.TELEGRAM_BOT_TOKEN
+  const chatId = process.env.TELEGRAM_CHAT_ID
+  if (!token || !chatId) {
+    console.warn('[telegram] Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID — skipping control message.')
+    return false
+  }
+  try {
+    const res = await fetch(`${TELEGRAM_API}/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: 'HTML',
+        disable_web_page_preview: true,
+        reply_markup: { inline_keyboard: rows },
+      }),
+    })
+    return res.ok
+  } catch (err) {
+    console.error('[telegram] control send error:', err instanceof Error ? err.message : String(err))
+    return false
+  }
+}
+
+/** Acknowledge a tapped inline button (stops its loading spinner). Never throws. */
+export async function answerCallback(callbackQueryId: string, text?: string): Promise<void> {
+  const token = process.env.TELEGRAM_BOT_TOKEN
+  if (!token) return
+  try {
+    await fetch(`${TELEGRAM_API}/bot${token}/answerCallbackQuery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callback_query_id: callbackQueryId, text: text ?? '' }),
+    })
+  } catch { /* ignore */ }
+}

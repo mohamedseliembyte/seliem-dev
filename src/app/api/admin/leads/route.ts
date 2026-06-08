@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
   // Conversations with their messages
   const { data: conversations } = await supabase
     .from('conversations')
-    .select('id, session_id, status, summary, lead_id, created_at, updated_at')
+    .select('id, session_id, status, summary, lead_id, created_at, updated_at, human_takeover')
     .order('created_at', { ascending: false })
     .limit(200)
 

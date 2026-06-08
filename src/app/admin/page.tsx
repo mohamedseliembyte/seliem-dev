@@ -35,6 +35,7 @@ type Conversation = {
   summary: string | null
   lead_id: string | null
   created_at: string
+  human_takeover?: boolean
 }
 
 type ChatMessage = {
@@ -303,10 +304,25 @@ export default function AdminPage() {
       })
       if (res.ok) {
         setMessages((prev) => [...prev, { conversation_id: conversationId, role: 'human', content, created_at: new Date().toISOString() }])
+        // Replying takes over the chat — reflect that locally so the AI shows paused.
+        setConversations((prev) => prev.map((c) => c.id === conversationId ? { ...c, human_takeover: true, status: 'human' } : c))
         setReplyText('')
       }
     } catch { /* ignore */ }
     setSendingReply(false)
+  }
+
+  // Toggle who's driving a conversation: human (AI paused) vs AI (Sage resumes).
+  const setChatMode = async (conversationId: string, takeover: boolean) => {
+    if (!session) return
+    try {
+      await fetch('/api/admin/chat-mode', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversation_id: conversationId, human_takeover: takeover }),
+      })
+      setConversations((prev) => prev.map((c) => c.id === conversationId ? { ...c, human_takeover: takeover, status: takeover ? 'human' : 'active' } : c))
+    } catch { /* ignore */ }
   }
 
   // Poll the open conversation for new visitor messages (live chat)
@@ -717,6 +733,18 @@ export default function AdminPage() {
                           <span style={{ ...s.smallBadge, background: convo.status === 'lead_captured' ? '#1a2a1a' : '#1a1a2a', color: convo.status === 'lead_captured' ? '#6d6' : '#88f' }}>
                             {convo.status === 'lead_captured' ? '✅ Lead captured' : convo.status}
                           </span>
+                        </div>
+
+                        {/* AI vs human mode control */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, padding: '8px 12px', background: '#0f0f0f', border: '1px solid #1c1c1c', borderRadius: 10 }}>
+                          <span style={{ fontSize: 12, color: convo.human_takeover ? '#6d6' : '#88f' }}>
+                            {convo.human_takeover ? '✍️ You\'re handling this chat — Sage paused' : '🤖 Sage is handling this chat'}
+                          </span>
+                          {convo.human_takeover ? (
+                            <button onClick={() => setChatMode(convo.id, false)} style={{ ...s.actionBtn, marginLeft: 'auto', padding: '6px 12px', fontSize: 12, cursor: 'pointer', background: '#1a2a1a', color: '#4d4', border: '1px solid #2a4a2a' }}>🤖 Let AI take over</button>
+                          ) : (
+                            <button onClick={() => setChatMode(convo.id, true)} style={{ ...s.actionBtn, marginLeft: 'auto', padding: '6px 12px', fontSize: 12, cursor: 'pointer' }}>✍️ Jump in (pause AI)</button>
+                          )}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           {msgs.map((m, i) => (

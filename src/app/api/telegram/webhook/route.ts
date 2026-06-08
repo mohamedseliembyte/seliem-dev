@@ -1,10 +1,22 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { sendTelegramMessage } from '@/lib/telegram'
+import { sendTelegramMessage, answerCallback } from '@/lib/telegram'
 import { askAdminAssistant } from '@/lib/admin-assistant'
+import { getSupabaseAdmin } from '@/lib/supabase'
+
+type Update = {
+  message?: { text?: string; chat?: { id?: number } }
+  callback_query?: {
+    id: string
+    data?: string
+    message?: { chat?: { id?: number } }
+    from?: { id?: number }
+  }
+}
 
 // Receives messages you send to the bot in Telegram and replies with answers
-// about your business. Locked to the admin chat only.
+// about your business, and handles inline-button taps for live-chat control.
+// Locked to the admin chat only.
 export async function POST(req: NextRequest) {
   // Verify Telegram's secret token (set when registering the webhook).
   // SECURITY: if the secret is not configured, refuse ALL requests — never
@@ -21,10 +33,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true }) // silently ignore unauthorized
   }
 
-  let update: { message?: { text?: string; chat?: { id?: number } } }
+  let update: Update
   try {
     update = await req.json()
   } catch {
+    return NextResponse.json({ ok: true })
+  }
+
+  // ── Inline-button taps: live-chat controls ──────────────────────────────────
+  const cb = update.callback_query
+  if (cb) {
+    const cbChat = cb.message?.chat?.id ?? cb.from?.id
+    if (String(cbChat) !== String(process.env.TELEGRAM_CHAT_ID)) return NextResponse.json({ ok: true })
+    await handleCallback(cb)
     return NextResponse.json({ ok: true })
   }
 
@@ -39,7 +60,7 @@ export async function POST(req: NextRequest) {
 
   if (text === '/start' || text === '/help') {
     await sendTelegramMessage(
-      "👋 I'm your Seliem.dev assistant. Ask me anything about your business:\n\n• How many leads today?\n• Who hasn't paid?\n• What should I focus on?\n• Summary of new leads",
+      "👋 I'm your Seliem.dev assistant. Ask me anything about your business:\n\n• How many leads today?\n• Who hasn't paid?\n• What does <client> want / their preferences?\n• What should I focus on?\n• Summary of new leads",
     )
     return NextResponse.json({ ok: true })
   }
@@ -47,4 +68,25 @@ export async function POST(req: NextRequest) {
   const answer = await askAdminAssistant(text, String(chatId))
   await sendTelegramMessage(answer)
   return NextResponse.json({ ok: true })
+}
+
+// Handle a tapped inline button. callback_data is "action:conversationId".
+async function handleCallback(cb: NonNullable<Update['callback_query']>) {
+  const [action, convoId] = (cb.data ?? '').split(':')
+  if (!convoId) { await answerCallback(cb.id); return }
+
+  const supabase = getSupabaseAdmin()
+  if (!supabase) { await answerCallback(cb.id, 'Database not configured'); return }
+
+  if (action === 'aiOn') {
+    await supabase.from('conversations').update({ human_takeover: false, status: 'active', updated_at: new Date().toISOString() }).eq('id', convoId)
+    await answerCallback(cb.id, '🤖 Sage is handling this chat again')
+    await sendTelegramMessage('🤖 Sage is now handling that conversation again.')
+  } else if (action === 'jumpIn') {
+    await supabase.from('conversations').update({ human_takeover: true, status: 'human', updated_at: new Date().toISOString() }).eq('id', convoId)
+    await answerCallback(cb.id, "✍️ You've taken over — reply from the admin page")
+    await sendTelegramMessage('✍️ You\'ve taken over that chat. Open the admin page to reply live — Sage is paused until you hand it back.')
+  } else {
+    await answerCallback(cb.id)
+  }
 }
