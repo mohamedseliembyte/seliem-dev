@@ -58,6 +58,26 @@ export const CAPTURE_LEAD_TOOL = {
   },
 }
 
+// Draft an email to an existing client for the admin to review & approve.
+// NEVER sends — only proposes a draft (see src/lib/admin-assistant.ts).
+export const SEND_CLIENT_EMAIL_TOOL = {
+  type: 'function' as const,
+  function: {
+    name: 'send_client_email',
+    description:
+      'Draft an email to an EXISTING client/lead for the admin to review and approve. This does NOT send the email — it only prepares a draft the admin must explicitly confirm. Use ONLY when the admin clearly asks to email/contact a specific client. The recipient MUST be an existing lead from the live data; never invent an address.',
+    parameters: {
+      type: 'object',
+      properties: {
+        recipient: { type: 'string', description: "The lead to email — their name or email exactly as it appears in the live LEADS data." },
+        subject: { type: 'string', description: 'Email subject line.' },
+        body: { type: 'string', description: "Full email body in the admin's intended tone. Plain text; will be wrapped in the Seliem.dev template." },
+      },
+      required: ['recipient', 'subject', 'body'],
+    },
+  },
+}
+
 export type ChatMessage = {
   role: 'system' | 'user' | 'assistant' | 'tool'
   content: string | null
@@ -66,10 +86,17 @@ export type ChatMessage = {
   tool_calls?: any[]
 }
 
-/** Call Groq. Throws on non-OK so the caller can fall back gracefully. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type GroqOpts = { tools?: any[]; toolChoice?: 'auto' | 'none' | 'required'; maxTokens?: number }
+
+/**
+ * Call Groq. Throws on non-OK so the caller can fall back gracefully.
+ * `useTools`: true (default) = capture_lead tool; false = no tools (back-compat
+ * with existing callers); or an opts object for custom tools/limits.
+ */
 export async function groqChat(
   messages: ChatMessage[],
-  useTools = true,
+  useTools: boolean | GroqOpts = true,
 ): Promise<{
   content: string | null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -78,15 +105,27 @@ export async function groqChat(
   const key = process.env.GROQ_API_KEY
   if (!key) throw new Error('GROQ_API_KEY missing')
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let tools: any[] | undefined
+  let toolChoice: string | undefined
+  let maxTokens = 500
+  if (useTools === true) {
+    tools = [CAPTURE_LEAD_TOOL]; toolChoice = 'auto'
+  } else if (useTools && typeof useTools === 'object') {
+    tools = useTools.tools && useTools.tools.length ? useTools.tools : undefined
+    toolChoice = tools ? (useTools.toolChoice ?? 'auto') : undefined
+    if (useTools.maxTokens) maxTokens = useTools.maxTokens
+  }
+
   const res = await fetch(GROQ_URL, {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: MODEL,
       messages,
-      ...(useTools ? { tools: [CAPTURE_LEAD_TOOL], tool_choice: 'auto' } : {}),
+      ...(tools ? { tools, tool_choice: toolChoice } : {}),
       temperature: 0.6,
-      max_tokens: 500,
+      max_tokens: maxTokens,
     }),
   })
 

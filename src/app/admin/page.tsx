@@ -79,6 +79,8 @@ type Task = {
   created_at: string
 }
 
+type EmailDraft = { id: string; to_email: string; to_name: string | null; subject: string; body: string }
+
 // Your PayPal.Me handle (set NEXT_PUBLIC_PAYPAL_HANDLE in env)
 const PAYPAL_HANDLE = process.env.NEXT_PUBLIC_PAYPAL_HANDLE || ''
 
@@ -296,7 +298,9 @@ export default function AdminPage() {
   const [showAssistant, setShowAssistant] = useState(false)
   const [askQ, setAskQ] = useState('')
   const [askBusy, setAskBusy] = useState(false)
-  const [askMsgs, setAskMsgs] = useState<{ role: 'you' | 'sage'; text: string }[]>([])
+  const [askMsgs, setAskMsgs] = useState<{ role: 'you' | 'sage'; text: string; draft?: EmailDraft }[]>([])
+  const [draftBusy, setDraftBusy] = useState<string | null>(null)
+  const [draftDone, setDraftDone] = useState<Record<string, string>>({}) // draftId -> 'sent' | 'cancelled' | error
 
   const askSage = async () => {
     const question = askQ.trim()
@@ -311,12 +315,30 @@ export default function AdminPage() {
         body: JSON.stringify({ question }),
       })
       const data = await res.json()
-      setAskMsgs((m) => [...m, { role: 'sage', text: data.text || data.error || 'No answer.' }])
+      setAskMsgs((m) => [...m, { role: 'sage', text: data.text || data.error || 'No answer.', draft: data.draft }])
     } catch {
       setAskMsgs((m) => [...m, { role: 'sage', text: "Couldn't reach the server — try again." }])
     }
     setAskBusy(false)
   }
+
+  const approveDraft = async (d: EmailDraft) => {
+    if (!session || draftBusy) return
+    setDraftBusy(d.id)
+    try {
+      const res = await fetch('/api/admin/assistant/send-draft', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ draftId: d.id }),
+      })
+      const data = await res.json()
+      setDraftDone((prev) => ({ ...prev, [d.id]: res.ok && data.sent ? 'sent' : (data.error || 'Failed to send') }))
+    } catch {
+      setDraftDone((prev) => ({ ...prev, [d.id]: 'Network error' }))
+    }
+    setDraftBusy(null)
+  }
+  const cancelDraft = (d: EmailDraft) => setDraftDone((prev) => ({ ...prev, [d.id]: 'cancelled' }))
 
   // ── Live reply (human takeover) ──────────────────────────────────────────
   const [replyText, setReplyText] = useState('')
@@ -620,16 +642,40 @@ export default function AdminPage() {
                 </div>
               )}
               {askMsgs.map((m, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: m.role === 'you' ? 'flex-end' : 'flex-start' }}>
-                  <div style={{
-                    maxWidth: '88%', padding: '10px 13px', borderRadius: 12, fontSize: 13.5, lineHeight: 1.55, whiteSpace: 'pre-wrap',
-                    ...(m.role === 'you'
-                      ? { background: GOLD, color: '#000', borderBottomRightRadius: 4 }
-                      : { background: '#161616', color: '#ddd', border: '1px solid #222', borderBottomLeftRadius: 4 }),
-                  }}>
-                    {m.role === 'sage' && <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 3 }}>🤖 Sage</div>}
-                    {m.text}
+                <div key={i}>
+                  <div style={{ display: 'flex', justifyContent: m.role === 'you' ? 'flex-end' : 'flex-start' }}>
+                    <div style={{
+                      maxWidth: '88%', padding: '10px 13px', borderRadius: 12, fontSize: 13.5, lineHeight: 1.55, whiteSpace: 'pre-wrap',
+                      ...(m.role === 'you'
+                        ? { background: GOLD, color: '#000', borderBottomRightRadius: 4 }
+                        : { background: '#161616', color: '#ddd', border: '1px solid #222', borderBottomLeftRadius: 4 }),
+                    }}>
+                      {m.role === 'sage' && <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 3 }}>🤖 Sage</div>}
+                      {m.text}
+                    </div>
                   </div>
+
+                  {/* Email draft confirm card — nothing sends without this click */}
+                  {m.draft && (
+                    <div style={{ marginTop: 8, padding: 14, background: '#0f0f0a', border: '1px solid rgba(201,168,76,0.35)', borderRadius: 12 }}>
+                      <div style={{ ...s.fieldLabel, color: GOLD, marginBottom: 8 }}>📧 Email draft — review before sending</div>
+                      <div style={{ fontSize: 13, color: '#ddd', marginBottom: 4 }}><span style={{ color: '#888' }}>To:</span> {m.draft.to_name || m.draft.to_email} <span style={{ color: '#777' }}>({m.draft.to_email})</span></div>
+                      <div style={{ fontSize: 13, color: '#ddd', marginBottom: 8 }}><span style={{ color: '#888' }}>Subject:</span> {m.draft.subject}</div>
+                      <pre style={{ margin: 0, padding: 10, background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, color: '#ccc', whiteSpace: 'pre-wrap', fontSize: 12.5, lineHeight: 1.5, fontFamily: 'inherit', maxHeight: 200, overflowY: 'auto' }}>{m.draft.body}</pre>
+                      {draftDone[m.draft.id] ? (
+                        <p style={{ marginTop: 10, marginBottom: 0, fontSize: 13, color: draftDone[m.draft.id] === 'sent' ? '#4d4' : draftDone[m.draft.id] === 'cancelled' ? '#999' : '#e88' }}>
+                          {draftDone[m.draft.id] === 'sent' ? '✅ Sent to the client.' : draftDone[m.draft.id] === 'cancelled' ? '❌ Cancelled — nothing sent.' : `❌ ${draftDone[m.draft.id]}`}
+                        </p>
+                      ) : (
+                        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                          <button onClick={() => approveDraft(m.draft!)} disabled={draftBusy === m.draft.id} style={{ ...s.actionBtn, flex: 1, background: GOLD, color: '#000', border: 'none', cursor: 'pointer', opacity: draftBusy === m.draft.id ? 0.5 : 1 }}>
+                            {draftBusy === m.draft.id ? 'Sending…' : '✅ Approve & send'}
+                          </button>
+                          <button onClick={() => cancelDraft(m.draft!)} style={{ ...s.actionBtn, cursor: 'pointer' }}>Cancel</button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
               {askBusy && <div style={{ color: '#888', fontSize: 13 }}>Sage is thinking…</div>}

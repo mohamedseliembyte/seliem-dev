@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
-import { askAdminAssistantRich } from '@/lib/admin-assistant'
+import { sendPendingEmail } from '@/lib/notify-client'
 
 function allowedAdmins(): string[] {
   return (process.env.ADMIN_EMAIL ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
 }
 
-// POST { question } — ask the private business assistant about leads, clients,
-// preferences, payments, etc. Same ADMIN_EMAIL-allow-list auth as other admin routes.
+// POST { draftId } — the ONE web path that actually sends an AI-drafted email.
+// Re-authorized here (defense in depth): the send is gated on a fresh admin
+// check, not merely the draft existing. Accepts ONLY draftId — no subject/body
+// overrides — so the bytes the admin approved are exactly what gets sent.
 export async function POST(req: NextRequest) {
   const supabase = getSupabaseAdmin()
   if (!supabase) return NextResponse.json({ error: 'DB not configured' }, { status: 500 })
@@ -21,12 +23,12 @@ export async function POST(req: NextRequest) {
   const admins = allowedAdmins()
   if (admins.length > 0 && !admins.includes(email)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  let body: { question?: string }
+  let body: { draftId?: string }
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }) }
-  const question = (body.question ?? '').trim()
-  if (!question) return NextResponse.json({ error: 'Empty question' }, { status: 400 })
-  if (question.length > 1000) return NextResponse.json({ text: 'That question is a bit long — try shortening it.' })
+  const draftId = (body.draftId ?? '').trim()
+  if (!draftId) return NextResponse.json({ error: 'Missing draftId' }, { status: 400 })
 
-  const result = await askAdminAssistantRich(question, `web:${email}`, { channel: 'web', requestedBy: email })
-  return NextResponse.json(result)
+  const result = await sendPendingEmail(draftId)
+  if (!result.ok) return NextResponse.json({ error: result.error ?? 'Send failed' }, { status: 400 })
+  return NextResponse.json({ sent: true })
 }

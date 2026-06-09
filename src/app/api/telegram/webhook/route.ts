@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { sendTelegramMessage, answerCallback } from '@/lib/telegram'
-import { askAdminAssistant } from '@/lib/admin-assistant'
+import { sendTelegramMessage, sendTelegramControl, answerCallback, escapeHtml } from '@/lib/telegram'
+import { askAdminAssistantRich } from '@/lib/admin-assistant'
+import { sendPendingEmail } from '@/lib/notify-client'
 import { getSupabaseAdmin } from '@/lib/supabase'
 
 type Update = {
@@ -65,8 +66,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true })
   }
 
-  const answer = await askAdminAssistant(text, String(chatId))
-  await sendTelegramMessage(answer)
+  const result = await askAdminAssistantRich(text, String(chatId), { channel: 'telegram', requestedBy: `telegram:${chatId}` })
+  if (result.draft) {
+    const d = result.draft
+    await sendTelegramControl(
+      `📧 <b>Draft email — review before sending</b>\n<b>To:</b> ${escapeHtml(d.to_name || d.to_email)} (${escapeHtml(d.to_email)})\n<b>Subject:</b> ${escapeHtml(d.subject)}\n\n${escapeHtml(d.body)}`,
+      [[{ text: '✅ Send', callback_data: `emailOk:${d.id}` }, { text: '❌ Cancel', callback_data: `emailNo:${d.id}` }]],
+    )
+  } else {
+    await sendTelegramMessage(result.text)
+  }
   return NextResponse.json({ ok: true })
 }
 
@@ -86,6 +95,15 @@ async function handleCallback(cb: NonNullable<Update['callback_query']>) {
     await supabase.from('conversations').update({ human_takeover: true, status: 'human', updated_at: new Date().toISOString() }).eq('id', convoId)
     await answerCallback(cb.id, "✍️ You've taken over — reply from the admin page")
     await sendTelegramMessage('✍️ You\'ve taken over that chat. Open the admin page to reply live — Sage is paused until you hand it back.')
+  } else if (action === 'emailOk') {
+    // Approve & send an AI-drafted client email (this Telegram chat is the trusted actor).
+    const r = await sendPendingEmail(convoId)
+    await answerCallback(cb.id, r.ok ? 'Sent ✅' : (r.error ?? 'Failed'))
+    await sendTelegramMessage(r.ok ? '✅ Email sent to the client.' : `❌ Couldn't send: ${r.error ?? 'unknown error'}`)
+  } else if (action === 'emailNo') {
+    await supabase.from('pending_emails').update({ status: 'cancelled' }).eq('id', convoId).eq('status', 'pending')
+    await answerCallback(cb.id, 'Cancelled')
+    await sendTelegramMessage('❌ Draft cancelled — nothing was sent.')
   } else {
     await answerCallback(cb.id)
   }
