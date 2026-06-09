@@ -78,12 +78,24 @@ export async function GET(req: NextRequest) {
     .order('created_at', { ascending: false })
     .limit(500)
 
+  // Newest VISITOR (role='user') message timestamp per lead → drives "unread".
+  const convoToLead = new Map<string, string>()
+  for (const c of conversations ?? []) if (c.lead_id) convoToLead.set(c.id, c.lead_id)
+  const lastVisitorAt: Record<string, string> = {}
+  for (const m of messages) {
+    if (m.role !== 'user') continue
+    const leadId = convoToLead.get(m.conversation_id)
+    if (!leadId) continue
+    if (!lastVisitorAt[leadId] || m.created_at > lastVisitorAt[leadId]) lastVisitorAt[leadId] = m.created_at
+  }
+
   return NextResponse.json({
     leads: leads ?? [],
     conversations: conversations ?? [],
     messages,
     payments: payments ?? [],
     agreements: agreements ?? [],
+    lastVisitorAt,
     admin: auth,
   })
 }
@@ -111,6 +123,11 @@ export async function PATCH(req: NextRequest) {
   const updates: Record<string, unknown> = {}
   for (const key of allowed) {
     if (body[key] !== undefined) updates[key] = body[key]
+  }
+
+  // `read: true` marks the lead read (read_at = now); `read: false` clears it.
+  if (body.read !== undefined) {
+    updates.read_at = body.read ? new Date().toISOString() : null
   }
 
   if (Object.keys(updates).length === 0) {

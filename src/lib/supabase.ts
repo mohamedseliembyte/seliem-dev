@@ -67,6 +67,8 @@ export async function saveLead(lead: LeadRecord): Promise<string | null> {
           .update({
             message:         appended,
             duplicate_count: (existing.duplicate_count ?? 0) + 1,
+            read_at:         null, // a follow-up re-flags the lead as unread
+
             // Backfill only fields the original lead is missing
             phone:         existing.phone         || lead.phone         || null,
             business_name: existing.business_name || lead.business_name || null,

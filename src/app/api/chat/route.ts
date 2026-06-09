@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getSupabaseAdmin, saveLead } from '@/lib/supabase'
 import { notifyLead } from '@/lib/telegram'
-import { sendTelegramMessage, sendTelegramControl } from '@/lib/telegram'
+import { sendTelegramMessage, sendTelegramControl, escapeHtml } from '@/lib/telegram'
 import { groqChat, SYSTEM_PROMPT, type ChatMessage } from '@/lib/groq'
 import { maybeEmailClientReply } from '@/lib/notify-client'
 
@@ -26,6 +26,43 @@ function isLimited(key: string, isAuthenticated: boolean): boolean {
 
 const FALLBACK =
   "I'm having a brief hiccup on my end — but I'd love to help. Could you share your email and a sentence about what you need? Our team will personally reach out. 🙏"
+
+// Build a short HTML identity block (name / email / business) for Telegram alerts
+// by resolving the conversation's linked lead. Falls back to an anonymous session
+// label. Never throws.
+async function getConvoIdentityLabel(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  conversationId: string,
+  sessionId: string,
+): Promise<string> {
+  try {
+    if (supabase) {
+      const { data: convo } = await supabase
+        .from('conversations')
+        .select('lead_id')
+        .eq('id', conversationId)
+        .maybeSingle()
+      if (convo?.lead_id) {
+        const { data: lead } = await supabase
+          .from('leads')
+          .select('name, email, business_name')
+          .eq('id', convo.lead_id)
+          .maybeSingle()
+        if (lead) {
+          const parts: string[] = []
+          if (lead.name) parts.push(`👤 <b>${escapeHtml(lead.name)}</b>`)
+          if (lead.email) parts.push(`📧 ${escapeHtml(lead.email)}`)
+          if (lead.business_name && lead.business_name !== 'N/A') parts.push(`🏢 ${escapeHtml(lead.business_name)}`)
+          if (parts.length) return parts.join('\n')
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[chat] identity lookup failed:', err instanceof Error ? err.message : String(err))
+  }
+  const short = sessionId ? sessionId.slice(0, 8) : 'unknown'
+  return `👤 <b>Anonymous visitor</b>\n🔖 Session ${escapeHtml(short)}`
+}
 
 export async function POST(req: NextRequest) {
   let body: { session_id?: string; message?: string; user_email?: string; user_name?: string }
@@ -146,9 +183,10 @@ export async function POST(req: NextRequest) {
       .maybeSingle()
     const humanActive = convoRow?.human_takeover === true
     if (humanActive) {
-      // Alert the rep that the visitor replied, with a one-tap "let AI take over".
+      // Alert the rep WHO replied (resolved client identity), with a one-tap "let AI take over".
+      const who = await getConvoIdentityLabel(supabase, conversationId, sessionId)
       void sendTelegramControl(
-        `💬 <b>Visitor replied in live chat:</b>\n${message}`,
+        `💬 <b>Client replied in live chat:</b>\n${who}\n\n${escapeHtml(message)}`,
         [[{ text: '🤖 Let AI take back over', callback_data: `aiOn:${conversationId}` }]],
       )
       return NextResponse.json({ reply: null, human: true })
@@ -237,8 +275,9 @@ export async function POST(req: NextRequest) {
       })
 
       // Offer a one-tap "jump in" so you can take over this live chat from Telegram.
+      const whoLive = await getConvoIdentityLabel(supabase, conversationId, sessionId)
       void sendTelegramControl(
-        '🟢 Sage is chatting with this lead live.',
+        `🟢 <b>Sage is chatting with this lead live:</b>\n${whoLive}`,
         [[{ text: '✍️ Jump in (pause AI)', callback_data: `jumpIn:${conversationId}` }]],
       )
 

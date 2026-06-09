@@ -10,7 +10,7 @@
 const TELEGRAM_API = 'https://api.telegram.org'
 
 /** Escape user-supplied text for Telegram's HTML parse mode. */
-function escapeHtml(s: unknown): string {
+export function escapeHtml(s: unknown): string {
   return String(s ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

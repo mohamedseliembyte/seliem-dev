@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { getSupabaseBrowser } from '@/lib/supabase-client'
 import { googlePopupSignIn, exchangeGoogleToken } from '@/lib/google-auth'
@@ -26,6 +26,7 @@ type Lead = {
   notes: string | null
   customer_no: number | null
   duplicate_count: number | null
+  read_at?: string | null
 }
 
 type Conversation = {
@@ -117,6 +118,8 @@ export default function AdminPage() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [lastVisitorAt, setLastVisitorAt] = useState<Record<string, string>>({})
+  const [origin, setOrigin] = useState<'all' | 'forms' | 'chat'>('all')
 
   const loadData = useCallback(async (token: string) => {
     setError(null)
@@ -126,6 +129,7 @@ export default function AdminPage() {
       if (!res.ok) { setError('Failed to load.'); return }
       const data = await res.json()
       setLeads(data.leads ?? [])
+      setLastVisitorAt(data.lastVisitorAt ?? {})
       setConversations(data.conversations ?? [])
       setMessages(data.messages ?? [])
       setPayments(data.payments ?? [])
@@ -288,6 +292,32 @@ export default function AdminPage() {
   const leadName = (id: string | null) => id ? (leads.find((l) => l.id === id)?.name ?? null) : null
   const openTasks = tasks.filter((t) => t.status !== 'done').length
 
+  // ── Ask Sage (admin AI assistant) ───────────────────────────────────────────
+  const [showAssistant, setShowAssistant] = useState(false)
+  const [askQ, setAskQ] = useState('')
+  const [askBusy, setAskBusy] = useState(false)
+  const [askMsgs, setAskMsgs] = useState<{ role: 'you' | 'sage'; text: string }[]>([])
+
+  const askSage = async () => {
+    const question = askQ.trim()
+    if (!session || !question || askBusy) return
+    setAskQ('')
+    setAskMsgs((m) => [...m, { role: 'you', text: question }])
+    setAskBusy(true)
+    try {
+      const res = await fetch('/api/admin/assistant', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question }),
+      })
+      const data = await res.json()
+      setAskMsgs((m) => [...m, { role: 'sage', text: data.text || data.error || 'No answer.' }])
+    } catch {
+      setAskMsgs((m) => [...m, { role: 'sage', text: "Couldn't reach the server — try again." }])
+    }
+    setAskBusy(false)
+  }
+
   // ── Live reply (human takeover) ──────────────────────────────────────────
   const [replyText, setReplyText] = useState('')
   const [sendingReply, setSendingReply] = useState(false)
@@ -355,7 +385,40 @@ export default function AdminPage() {
     if (dateTo && t > new Date(dateTo).getTime() + 86_400_000) return false // include the whole end day
     return true
   }
-  const filtered = leads.filter((l) => (filter === 'all' || l.status === filter) && inRange(l.created_at))
+
+  // ── Unread: no read_at yet, or a newer visitor message arrived since ────────
+  const isUnread = useCallback((lead: Lead) => {
+    if (!lead.read_at) return true
+    const lv = lastVisitorAt[lead.id]
+    return !!lv && lv > lead.read_at
+  }, [lastVisitorAt])
+  const unreadCount = leads.filter(isUnread).length
+
+  // ── Origin: chat-originated leads have a linked conversation; forms don't ───
+  const chatLeadIds = useMemo(
+    () => new Set(conversations.map((c) => c.lead_id).filter(Boolean) as string[]),
+    [conversations],
+  )
+  const isFormLead = (l: Lead) => !chatLeadIds.has(l.id)
+  const matchesOrigin = (l: Lead) => origin === 'all' || (origin === 'forms' ? isFormLead(l) : !isFormLead(l))
+
+  const filtered = leads.filter((l) =>
+    (filter === 'all' ? true : filter === 'unread' ? isUnread(l) : l.status === filter)
+    && inRange(l.created_at)
+    && matchesOrigin(l),
+  )
+
+  // Mark a lead read when opened (optimistic + server PATCH; survives reloads).
+  const markRead = useCallback((lead: Lead) => {
+    if (!session || (lead.read_at && !(lastVisitorAt[lead.id] && lastVisitorAt[lead.id] > lead.read_at))) return
+    const now = new Date().toISOString()
+    setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, read_at: now } : l))
+    fetch('/api/admin/leads', {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: lead.id, read: true }),
+    }).catch(() => {})
+  }, [session, lastVisitorAt])
 
   const toggleSelect = (id: string) => setSelectedIds((prev) => {
     const next = new Set(prev)
@@ -370,7 +433,7 @@ export default function AdminPage() {
   }
 
   const exportCsv = () => {
-    const cols = ['customer_no', 'name', 'email', 'phone', 'business_name', 'business_type', 'budget', 'status', 'domain_status', 'duplicate_count', 'created_at'] as const
+    const cols = ['customer_no', 'name', 'email', 'phone', 'business_name', 'business_type', 'budget', 'type', 'status', 'domain_status', 'duplicate_count', 'goals', 'message', 'created_at'] as const
     const cell = (v: unknown) => { const str = String(v ?? ''); return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str }
     const csv = [cols.join(','), ...filtered.map((l) => cols.map((c) => cell((l as Record<string, unknown>)[c])).join(','))].join('\n')
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
@@ -407,6 +470,7 @@ export default function AdminPage() {
           <h1 className="gold-text" style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Admin</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={() => setShowAssistant(true)} style={s.signOutBtn}>🤖 Ask Sage</button>
           <button onClick={() => setShowTasks(true)} style={s.signOutBtn}>
             📋 Tasks{openTasks > 0 ? ` (${openTasks})` : ''}
           </button>
@@ -417,8 +481,8 @@ export default function AdminPage() {
 
       {/* Stats bar */}
       <div style={s.statsBar}>
-        {['all', ...STATUSES].map((st) => {
-          const count = st === 'all' ? leads.length : leads.filter((l) => l.status === st).length
+        {['all', 'unread', ...STATUSES].map((st) => {
+          const count = st === 'all' ? leads.length : st === 'unread' ? unreadCount : leads.filter((l) => l.status === st).length
           return (
             <button key={st} onClick={() => setFilter(st)} style={{
               ...s.statPill,
@@ -426,8 +490,9 @@ export default function AdminPage() {
               borderColor: filter === st ? 'rgba(201,168,76,0.5)' : '#1c1c1c',
               color: filter === st ? GOLD : '#ccc',
             }}>
+              {st === 'unread' && unreadCount > 0 && <span style={{ width: 7, height: 7, borderRadius: 999, background: GOLD, display: 'inline-block' }} />}
               <span style={{ textTransform: 'capitalize' }}>{st}</span>
-              <span style={{ color: '#888', fontSize: 12 }}>({count})</span>
+              <span style={{ color: st === 'unread' && unreadCount > 0 ? GOLD : '#888', fontSize: 12 }}>({count})</span>
             </button>
           )
         })}
@@ -442,6 +507,24 @@ export default function AdminPage() {
         {(dateFrom || dateTo) && <button onClick={() => { setDateFrom(''); setDateTo('') }} style={s.signOutBtn}>Clear</button>}
         <span style={{ color: '#666', fontSize: 12 }}>{filtered.length} shown</span>
         <button onClick={exportCsv} disabled={filtered.length === 0} style={{ ...s.signOutBtn, marginLeft: 'auto', opacity: filtered.length === 0 ? 0.4 : 1 }}>⬇ Export CSV</button>
+      </div>
+
+      {/* Origin filter: forms vs chat-originated leads */}
+      <div style={{ display: 'flex', gap: 8, padding: '10px 24px', alignItems: 'center', flexWrap: 'wrap', borderBottom: '1px solid #1c1c1c' }}>
+        <span style={{ color: '#777', fontSize: 12, marginRight: 4 }}>Origin:</span>
+        {([['all', 'All'], ['forms', '📝 Forms'], ['chat', '💬 Chat']] as const).map(([key, label]) => {
+          const count = key === 'all' ? leads.length : key === 'forms' ? leads.filter(isFormLead).length : leads.filter((l) => !isFormLead(l)).length
+          return (
+            <button key={key} onClick={() => setOrigin(key)} style={{
+              ...s.statPill,
+              background: origin === key ? 'rgba(201,168,76,0.12)' : 'transparent',
+              borderColor: origin === key ? 'rgba(201,168,76,0.5)' : '#1c1c1c',
+              color: origin === key ? GOLD : '#ccc',
+            }}>
+              <span>{label}</span><span style={{ color: '#888', fontSize: 12 }}>({count})</span>
+            </button>
+          )
+        })}
       </div>
 
       {/* Bulk action bar */}
@@ -459,7 +542,11 @@ export default function AdminPage() {
 
       {!error && filtered.length === 0 && (
         <p style={{ color: '#777', padding: 24, textAlign: 'center' }}>
-          {filter === 'all' ? "No leads yet. They'll appear here when someone chats or submits the form." : `No ${filter} leads.`}
+          {origin === 'forms' ? 'No form submissions match these filters.'
+            : origin === 'chat' ? 'No chat leads match these filters.'
+            : filter === 'unread' ? 'All caught up — nothing unread. ✅'
+            : filter === 'all' ? "No leads yet. They'll appear here when someone chats or submits the form."
+            : `No ${filter} leads.`}
         </p>
       )}
 
@@ -477,9 +564,10 @@ export default function AdminPage() {
               title="Select for bulk action"
               style={{ marginTop: 18, cursor: 'pointer' }}
             />
-            <button onClick={() => { setSelected(lead); setTab(getLeadConversations(lead.id).length > 0 ? 'chat' : 'details') }} className="card-lift" style={{ ...s.row, flex: 1 }}>
+            <button onClick={() => { markRead(lead); setSelected(lead); setTab(getLeadConversations(lead.id).length > 0 ? 'chat' : 'details') }} className="card-lift" style={{ ...s.row, flex: 1, border: isUnread(lead) ? '1px solid rgba(201,168,76,0.35)' : (s.row.border as string) }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 600, color: '#eee' }}>
+                  {isUnread(lead) && <span title="Unread" style={{ width: 8, height: 8, borderRadius: 999, background: GOLD, display: 'inline-block', marginRight: 8, boxShadow: '0 0 6px rgba(201,168,76,0.6)' }} />}
                   {lead.customer_no && <span style={{ color: '#666', fontWeight: 400, fontSize: 12, marginRight: 6 }}>#{lead.customer_no}</span>}
                   {lead.name}
                 </span>
@@ -503,6 +591,54 @@ export default function AdminPage() {
           )
         })}
       </div>
+
+      {/* ── Ask Sage drawer (admin AI assistant) ───────────────────────────── */}
+      {showAssistant && (
+        <div style={s.overlay} onClick={() => setShowAssistant(false)}>
+          <div style={s.drawer} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <h2 className="gold-text" style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>🤖 Ask Sage</h2>
+              <button onClick={() => setShowAssistant(false)} style={s.closeBtn}>✕</button>
+            </div>
+            <p style={{ color: '#777', fontSize: 12, marginTop: 0, marginBottom: 16 }}>
+              Your private business assistant. Ask about leads, clients & their preferences, who hasn&apos;t paid, what to focus on…
+            </p>
+
+            <div style={{ display: 'grid', gap: 10, marginBottom: 14 }}>
+              {askMsgs.length === 0 && (
+                <div style={{ color: '#666', fontSize: 13, lineHeight: 1.6 }}>
+                  Try: <em>&quot;What does the newest lead want?&quot;</em> · <em>&quot;Who hasn&apos;t paid?&quot;</em> · <em>&quot;Summarize this week&apos;s leads&quot;</em>
+                </div>
+              )}
+              {askMsgs.map((m, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: m.role === 'you' ? 'flex-end' : 'flex-start' }}>
+                  <div style={{
+                    maxWidth: '88%', padding: '10px 13px', borderRadius: 12, fontSize: 13.5, lineHeight: 1.55, whiteSpace: 'pre-wrap',
+                    ...(m.role === 'you'
+                      ? { background: GOLD, color: '#000', borderBottomRightRadius: 4 }
+                      : { background: '#161616', color: '#ddd', border: '1px solid #222', borderBottomLeftRadius: 4 }),
+                  }}>
+                    {m.role === 'sage' && <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 3 }}>🤖 Sage</div>}
+                    {m.text}
+                  </div>
+                </div>
+              ))}
+              {askBusy && <div style={{ color: '#888', fontSize: 13 }}>Sage is thinking…</div>}
+            </div>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                value={askQ}
+                onChange={(e) => setAskQ(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') askSage() }}
+                placeholder="Ask about your business…"
+                style={{ flex: 1, padding: '10px 12px', background: '#0a0a0a', border: '1px solid #222', borderRadius: 10, color: '#eee', fontSize: 13 }}
+              />
+              <button onClick={askSage} disabled={askBusy || !askQ.trim()} style={{ ...s.actionBtn, background: GOLD, color: '#000', border: 'none', cursor: 'pointer', opacity: (askBusy || !askQ.trim()) ? 0.4 : 1 }}>Ask</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Tasks drawer ───────────────────────────────────────────────────── */}
       {showTasks && (
