@@ -155,6 +155,19 @@ export async function sendTelegramControl(text: string, rows: CallbackButton[][]
   }
 }
 
+/** Register the bot's slash-command menu (the "/" list + Menu button). Never throws. */
+export async function setTelegramCommands(commands: { command: string; description: string }[]): Promise<void> {
+  const token = process.env.TELEGRAM_BOT_TOKEN
+  if (!token) return
+  try {
+    await fetch(`${TELEGRAM_API}/bot${token}/setMyCommands`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commands }),
+    })
+  } catch { /* ignore */ }
+}
+
 /** Acknowledge a tapped inline button (stops its loading spinner). Never throws. */
 export async function answerCallback(callbackQueryId: string, text?: string): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN

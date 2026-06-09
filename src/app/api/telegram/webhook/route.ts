@@ -1,9 +1,50 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { sendTelegramMessage, sendTelegramControl, answerCallback, escapeHtml } from '@/lib/telegram'
+import { sendTelegramMessage, sendTelegramControl, answerCallback, escapeHtml, setTelegramCommands } from '@/lib/telegram'
 import { askAdminAssistantRich } from '@/lib/admin-assistant'
 import { sendPendingEmail } from '@/lib/notify-client'
+import { generateBriefing } from '@/lib/briefing'
 import { getSupabaseAdmin } from '@/lib/supabase'
+
+// Quick commands surfaced as both the "/" menu and tappable buttons.
+// Each maps to either the CEO briefing or a canned assistant question.
+const COMMANDS: { key: string; label: string; desc: string; q?: string }[] = [
+  { key: 'briefing', label: '📊 Daily briefing', desc: 'Full business briefing' },
+  { key: 'leads', label: '🆕 New leads', desc: 'Summary of recent leads', q: 'Summarize the newest leads and what each one wants.' },
+  { key: 'unpaid', label: '💰 Who hasn’t paid', desc: 'Outstanding / overdue payments', q: 'Who has unpaid or overdue payments? List them with amounts.' },
+  { key: 'tasks', label: '📋 Tasks', desc: 'Open tasks', q: 'What tasks are open or due? List them.' },
+  { key: 'focus', label: '🎯 What to focus on', desc: 'Today’s priorities', q: 'What should I focus on today? Be brief and practical.' },
+  { key: 'chats', label: '💬 Live chats', desc: 'Live chats in progress', q: 'Are there any live chats in progress right now?' },
+]
+
+async function runCommand(key: string, chatKey: string): Promise<string> {
+  if (key === 'briefing') return generateBriefing()
+  const cmd = COMMANDS.find((c) => c.key === key)
+  if (!cmd?.q) return 'Unknown command.'
+  return (await askAdminAssistantRich(cmd.q, chatKey, { channel: 'telegram', requestedBy: `telegram:${chatKey}` })).text
+}
+
+// 2-per-row inline keyboard of the command buttons.
+function commandKeyboard() {
+  const rows: { text: string; callback_data: string }[][] = []
+  for (let i = 0; i < COMMANDS.length; i += 2) {
+    rows.push(COMMANDS.slice(i, i + 2).map((c) => ({ text: c.label, callback_data: `cmd:${c.key}` })))
+  }
+  return rows
+}
+
+async function showMenu() {
+  // (Re)register the slash-command menu; idempotent, cheap.
+  void setTelegramCommands([
+    { command: 'start', description: 'Show the command menu' },
+    { command: 'help', description: 'Show the command menu' },
+    ...COMMANDS.map((c) => ({ command: c.key, description: c.desc })),
+  ])
+  await sendTelegramControl(
+    "👋 <b>Seliem.dev assistant</b>\nTap a command, or just ask me anything (e.g. “email Sarah her site is ready”, “invoice John $500 deposit”).",
+    commandKeyboard(),
+  )
+}
 
 type Update = {
   message?: { text?: string; chat?: { id?: number } }
@@ -59,11 +100,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true })
   }
 
-  if (text === '/start' || text === '/help') {
-    await sendTelegramMessage(
-      "👋 I'm your Seliem.dev assistant. Ask me anything about your business:\n\n• How many leads today?\n• Who hasn't paid?\n• What does <client> want / their preferences?\n• What should I focus on?\n• Summary of new leads",
-    )
-    return NextResponse.json({ ok: true })
+  // Slash commands → the menu, or a quick canned command.
+  if (text.startsWith('/')) {
+    const cmd = text.slice(1).split(/\s+/)[0].toLowerCase()
+    if (cmd === 'start' || cmd === 'help') {
+      await showMenu()
+      return NextResponse.json({ ok: true })
+    }
+    if (COMMANDS.some((c) => c.key === cmd)) {
+      await sendTelegramMessage(await runCommand(cmd, String(chatId)))
+      return NextResponse.json({ ok: true })
+    }
+    // Unknown slash command → fall through to the assistant.
   }
 
   const result = await askAdminAssistantRich(text, String(chatId), { channel: 'telegram', requestedBy: `telegram:${chatId}` })
@@ -104,6 +152,11 @@ async function handleCallback(cb: NonNullable<Update['callback_query']>) {
     await supabase.from('pending_emails').update({ status: 'cancelled' }).eq('id', convoId).eq('status', 'pending')
     await answerCallback(cb.id, 'Cancelled')
     await sendTelegramMessage('❌ Draft cancelled — nothing was sent.')
+  } else if (action === 'cmd') {
+    // A tapped command button (convoId holds the command key).
+    await answerCallback(cb.id, '⏳ Working…')
+    const chatKey = String(cb.message?.chat?.id ?? cb.from?.id ?? '')
+    await sendTelegramMessage(await runCommand(convoId, chatKey))
   } else {
     await answerCallback(cb.id)
   }
