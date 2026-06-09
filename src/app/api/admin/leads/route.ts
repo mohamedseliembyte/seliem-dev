@@ -79,14 +79,24 @@ export async function GET(req: NextRequest) {
     .limit(500)
 
   // Newest VISITOR (role='user') message timestamp per lead → drives "unread".
+  // Use a dedicated DESC query (the shared `messages` query above is ASC-limited
+  // for transcript rendering, so its newest rows can be truncated at scale).
   const convoToLead = new Map<string, string>()
   for (const c of conversations ?? []) if (c.lead_id) convoToLead.set(c.id, c.lead_id)
   const lastVisitorAt: Record<string, string> = {}
-  for (const m of messages) {
-    if (m.role !== 'user') continue
-    const leadId = convoToLead.get(m.conversation_id)
-    if (!leadId) continue
-    if (!lastVisitorAt[leadId] || m.created_at > lastVisitorAt[leadId]) lastVisitorAt[leadId] = m.created_at
+  if (convoIds.length > 0) {
+    const { data: vmsgs } = await supabase
+      .from('messages')
+      .select('conversation_id, created_at')
+      .in('conversation_id', convoIds)
+      .eq('role', 'user')
+      .order('created_at', { ascending: false })
+      .limit(2000)
+    for (const m of vmsgs ?? []) {
+      const leadId = convoToLead.get(m.conversation_id)
+      if (!leadId) continue
+      if (!lastVisitorAt[leadId] || m.created_at > lastVisitorAt[leadId]) lastVisitorAt[leadId] = m.created_at
+    }
   }
 
   return NextResponse.json({

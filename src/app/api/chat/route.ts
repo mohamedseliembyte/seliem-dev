@@ -178,10 +178,13 @@ export async function POST(req: NextRequest) {
     // admin drawer or Telegram), so the AI can be handed control back later.
     const { data: convoRow } = await supabase
       .from('conversations')
-      .select('human_takeover')
+      .select('human_takeover, status, lead_id')
       .eq('id', conversationId)
       .maybeSingle()
     const humanActive = convoRow?.human_takeover === true
+    // Whether this conversation was already captured as a lead (so we fire the
+    // one-time capture notifications only on the first capture, not on repeats).
+    const alreadyCaptured = convoRow?.status === 'lead_captured' || !!convoRow?.lead_id
     if (humanActive) {
       // Alert the rep WHO replied (resolved client identity), with a one-tap "let AI take over".
       const who = await getConvoIdentityLabel(supabase, conversationId, sessionId)
@@ -261,25 +264,29 @@ export async function POST(req: NextRequest) {
         .update({ status: 'lead_captured', lead_id: leadId, summary: args.summary ?? null, updated_at: new Date().toISOString() })
         .eq('id', conversationId)
 
-      // Ping Telegram with the captured lead
-      await notifyLead({
-        type: 'contact',
-        name: args.name || 'Chat visitor',
-        email: args.email || 'n/a',
-        message: `🤖 Captured by AI chat:\n${args.summary || ''}`,
-        phone: args.phone,
-        businessName: args.business_name,
-        businessType: args.business_type,
-        budget: args.budget,
-        goals: args.goals,
-      })
+      // One-time capture notifications: only on the FIRST capture for this
+      // conversation (the model may re-call capture_lead on later messages).
+      if (!alreadyCaptured) {
+        // Ping Telegram with the captured lead
+        await notifyLead({
+          type: 'contact',
+          name: args.name || 'Chat visitor',
+          email: args.email || 'n/a',
+          message: `🤖 Captured by AI chat:\n${args.summary || ''}`,
+          phone: args.phone,
+          businessName: args.business_name,
+          businessType: args.business_type,
+          budget: args.budget,
+          goals: args.goals,
+        })
 
-      // Offer a one-tap "jump in" so you can take over this live chat from Telegram.
-      const whoLive = await getConvoIdentityLabel(supabase, conversationId, sessionId)
-      void sendTelegramControl(
-        `🟢 <b>Sage is chatting with this lead live:</b>\n${whoLive}`,
-        [[{ text: '✍️ Jump in (pause AI)', callback_data: `jumpIn:${conversationId}` }]],
-      )
+        // Offer a one-tap "jump in" so you can take over this live chat from Telegram.
+        const whoLive = await getConvoIdentityLabel(supabase, conversationId, sessionId)
+        void sendTelegramControl(
+          `🟢 <b>Sage is chatting with this lead live:</b>\n${whoLive}`,
+          [[{ text: '✍️ Jump in (pause AI)', callback_data: `jumpIn:${conversationId}` }]],
+        )
+      }
 
       // Ask the model for a natural confirmation reply (tool-result turn)
       try {

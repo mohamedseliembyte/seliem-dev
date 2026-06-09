@@ -372,6 +372,15 @@ export default function AdminPage() {
               const fresh = data.messages.map((m: { role: string; content: string; created_at: string }) => ({ ...m, conversation_id: c.id }))
               return [...others, ...fresh]
             })
+            // Keep unread state accurate: record the newest visitor message time
+            // for this lead so it re-flags unread once the drawer closes.
+            const leadId = c.lead_id
+            const newestUser = (data.messages as { role: string; created_at: string }[])
+              .filter((m) => m.role === 'user')
+              .reduce((max: string, m) => (m.created_at > max ? m.created_at : max), '')
+            if (leadId && newestUser) {
+              setLastVisitorAt((prev) => (!prev[leadId] || newestUser > prev[leadId] ? { ...prev, [leadId]: newestUser } : prev))
+            }
           }
         } catch { /* ignore */ }
       }
