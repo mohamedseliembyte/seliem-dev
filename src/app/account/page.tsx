@@ -7,6 +7,7 @@ import type { Session } from '@supabase/supabase-js'
 import { getSupabaseBrowser } from '@/lib/supabase-client'
 import { googlePopupSignIn, exchangeGoogleToken } from '@/lib/google-auth'
 import { downloadAgreementPdf } from '@/lib/agreement-pdf'
+import { downloadInvoicePdf } from '@/lib/invoice-pdf'
 
 type Lead = {
   id: string
@@ -23,6 +24,7 @@ type Convo = { id: string; status: string; summary: string | null; created_at: s
 type Msg = { conversation_id: string; role: string; content: string; created_at: string }
 type Payment = { id: string; lead_id: string; description: string; amount: number; status: string; created_at: string }
 type Agreement = { id: string; lead_id: string; scope: string; price: number; content: string; status: string; created_at: string; accepted_at: string | null }
+type Invoice = { id: string; invoice_no: number | null; lead_id: string | null; items: { description: string; amount: number }[]; total: number; status: string; notes: string | null; due_date: string | null; created_at: string; paid_at: string | null }
 
 const GOLD = '#c9a84c'
 const PAYPAL_HANDLE = process.env.NEXT_PUBLIC_PAYPAL_HANDLE || ''
@@ -34,7 +36,7 @@ export default function AccountPage() {
   const supabase = getSupabaseBrowser()
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState<Session | null>(null)
-  const [data, setData] = useState<{ leads: Lead[]; conversations: Convo[]; messages: Msg[]; payments?: Payment[]; agreements?: Agreement[] } | null>(null)
+  const [data, setData] = useState<{ leads: Lead[]; conversations: Convo[]; messages: Msg[]; payments?: Payment[]; agreements?: Agreement[]; invoices?: Invoice[] } | null>(null)
   const [signing, setSigning] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
 
@@ -203,6 +205,44 @@ export default function AccountPage() {
             )}
 
             {/* Payments */}
+            {(data?.invoices ?? []).length > 0 && (
+              <Section title="Your Invoices" count={(data?.invoices ?? []).length}>
+                <div className="space-y-4">
+                  {(data?.invoices ?? []).map((inv) => (
+                    <div key={inv.id} className="rounded-2xl border border-white/10 bg-[#141414] p-5">
+                      <div className="mb-3 flex items-center justify-between">
+                        <div>
+                          <span className="text-xs text-gray-500">Invoice #{inv.invoice_no}</span>
+                          <div className="text-2xl font-bold gold-text">${Number(inv.total).toLocaleString()}</div>
+                        </div>
+                        {inv.status === 'paid'
+                          ? <span className="rounded-full bg-[#1a2a1a] px-3 py-1 text-xs font-semibold text-green-400">✓ Paid</span>
+                          : <span className="rounded-full bg-[#2a2a14] px-3 py-1 text-xs font-semibold" style={{ color: GOLD }}>{inv.due_date ? `Due ${new Date(inv.due_date).toLocaleDateString()}` : 'Due'}</span>}
+                      </div>
+                      <div className="space-y-1 border-t border-white/5 pt-3 text-sm text-gray-400">
+                        {(inv.items ?? []).map((it, i) => (
+                          <div key={i} className="flex justify-between gap-3">
+                            <span>{it.description}</span>
+                            <span className="shrink-0 text-gray-300">${Number(it.amount).toLocaleString()}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                        {inv.status !== 'paid' && PAYPAL_HANDLE && (
+                          <a href={`https://paypal.me/${PAYPAL_HANDLE}/${inv.total}`} target="_blank" rel="noreferrer" className="sheen flex-1 rounded-xl bg-gradient-to-r from-[#c9a84c] to-[#f5d485] py-3 text-center text-sm font-semibold text-black transition hover:brightness-105">
+                            Pay ${Number(inv.total).toLocaleString()}
+                          </a>
+                        )}
+                        <button onClick={() => downloadInvoicePdf({ ...inv, clientName: userName, clientEmail: session.user.email })} className="rounded-xl border border-white/15 px-4 py-3 text-sm font-semibold text-gray-300 transition hover:border-[#c9a84c]/50 hover:text-white">
+                          ⬇ Download PDF
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            )}
+
             {(data?.payments ?? []).length > 0 && (
               <Section title="Your Payments" count={(data?.payments ?? []).length}>
                 <div className="space-y-4">

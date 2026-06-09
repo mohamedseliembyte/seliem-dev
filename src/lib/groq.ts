@@ -78,6 +78,35 @@ export const SEND_CLIENT_EMAIL_TOOL = {
   },
 }
 
+// Create a DRAFT invoice for an existing client. Creating a draft has no
+// external side effect (nothing is emailed), so the admin reviews/sends it.
+export const CREATE_INVOICE_TOOL = {
+  type: 'function' as const,
+  function: {
+    name: 'create_invoice',
+    description:
+      'Create a DRAFT invoice for an EXISTING client/lead when the admin asks to invoice/bill someone. The recipient MUST be an existing lead from the live data. This creates a draft the admin can review and send — it does not email anything.',
+    parameters: {
+      type: 'object',
+      properties: {
+        recipient: { type: 'string', description: 'The client to invoice — their name or email as it appears in the live LEADS data.' },
+        items: {
+          type: 'array',
+          description: 'One or more line items.',
+          items: {
+            type: 'object',
+            properties: { description: { type: 'string' }, amount: { type: 'number', description: 'Amount in dollars, > 0' } },
+            required: ['description', 'amount'],
+          },
+        },
+        due_date: { type: 'string', description: 'Optional due date as YYYY-MM-DD.' },
+        notes: { type: 'string', description: 'Optional note shown on the invoice.' },
+      },
+      required: ['recipient', 'items'],
+    },
+  },
+}
+
 export type ChatMessage = {
   role: 'system' | 'user' | 'assistant' | 'tool'
   content: string | null

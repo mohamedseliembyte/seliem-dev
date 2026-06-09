@@ -54,6 +54,7 @@ export async function GET(req: NextRequest) {
   // Their payments
   let payments: unknown[] = []
   let agreements: unknown[] = []
+  let invoices: unknown[] = []
   if (leadIds.length > 0) {
     const { data: pays } = await supabase
       .from('payments')
@@ -68,6 +69,15 @@ export async function GET(req: NextRequest) {
       .in('lead_id', leadIds)
       .order('created_at', { ascending: false })
     agreements = ags ?? []
+
+    // Invoices the client can see (drafts stay hidden until sent).
+    const { data: invs } = await supabase
+      .from('invoices')
+      .select('id, invoice_no, lead_id, items, total, currency, status, notes, due_date, created_at, paid_at')
+      .in('lead_id', leadIds)
+      .neq('status', 'draft')
+      .order('created_at', { ascending: false })
+    invoices = invs ?? []
   }
 
   return NextResponse.json({
@@ -77,5 +87,6 @@ export async function GET(req: NextRequest) {
     messages,
     payments,
     agreements,
+    invoices,
   })
 }

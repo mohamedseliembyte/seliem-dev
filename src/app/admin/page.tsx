@@ -6,6 +6,7 @@ import type { Session } from '@supabase/supabase-js'
 import { getSupabaseBrowser } from '@/lib/supabase-client'
 import { googlePopupSignIn, exchangeGoogleToken } from '@/lib/google-auth'
 import { downloadAgreementPdf } from '@/lib/agreement-pdf'
+import { downloadInvoicePdf } from '@/lib/invoice-pdf'
 
 /* ── Types ────────────────────────────────────────────────────────────────── */
 type Lead = {
@@ -81,6 +82,20 @@ type Task = {
 
 type EmailDraft = { id: string; to_email: string; to_name: string | null; subject: string; body: string }
 
+type Invoice = {
+  id: string
+  invoice_no: number | null
+  lead_id: string | null
+  items: { description: string; amount: number }[]
+  total: number
+  currency: string
+  status: string
+  notes: string | null
+  due_date: string | null
+  created_at: string
+  paid_at: string | null
+}
+
 // Your PayPal.Me handle (set NEXT_PUBLIC_PAYPAL_HANDLE in env)
 const PAYPAL_HANDLE = process.env.NEXT_PUBLIC_PAYPAL_HANDLE || ''
 
@@ -110,6 +125,7 @@ export default function AdminPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
   const [agreements, setAgreements] = useState<Agreement[]>([])
+  const [invoices, setInvoices] = useState<Invoice[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [error, setError] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
@@ -136,11 +152,15 @@ export default function AdminPage() {
       setMessages(data.messages ?? [])
       setPayments(data.payments ?? [])
       setAgreements(data.agreements ?? [])
-      // Tasks live on a separate route
+      // Tasks + invoices live on separate routes
       try {
         const tRes = await fetch('/api/admin/tasks', { headers: { Authorization: `Bearer ${token}` } })
         if (tRes.ok) { const t = await tRes.json(); setTasks(t.tasks ?? []) }
       } catch { /* tasks are optional */ }
+      try {
+        const iRes = await fetch('/api/admin/invoices', { headers: { Authorization: `Bearer ${token}` } })
+        if (iRes.ok) { const i = await iRes.json(); setInvoices(i.invoices ?? []) }
+      } catch { /* invoices are optional */ }
     } catch { setError('Network error.') }
   }, [])
 
@@ -254,6 +274,39 @@ export default function AdminPage() {
       if (data.agreement) { setAgreements((a) => [data.agreement, ...a]); setAgScope(''); setAgPrice('') }
     } catch { /* ignore */ }
     setAgBusy(false)
+  }
+
+  // ── Invoices ───────────────────────────────────────────────────────────────
+  const getLeadInvoices = (leadId: string) => invoices.filter((i) => i.lead_id === leadId)
+  const [invDesc, setInvDesc] = useState('')
+  const [invAmount, setInvAmount] = useState('')
+  const [invBusy, setInvBusy] = useState(false)
+
+  const createLeadInvoice = async (leadId: string) => {
+    if (!session || !invDesc.trim() || !Number(invAmount) || invBusy) return
+    setInvBusy(true)
+    try {
+      const res = await fetch('/api/admin/invoices', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead_id: leadId, items: [{ description: invDesc.trim(), amount: Number(invAmount) }], status: 'sent' }),
+      })
+      const data = await res.json()
+      if (data.invoice) { setInvoices((p) => [data.invoice, ...p]); setInvDesc(''); setInvAmount('') }
+    } catch { /* ignore */ }
+    setInvBusy(false)
+  }
+
+  const setInvoiceStatus = async (id: string, status: string) => {
+    if (!session) return
+    try {
+      await fetch('/api/admin/invoices', {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status }),
+      })
+      setInvoices((p) => p.map((x) => x.id === id ? { ...x, status, paid_at: status === 'paid' ? new Date().toISOString() : null } : x))
+    } catch { /* ignore */ }
   }
 
   // ── Tasks ──────────────────────────────────────────────────────────────────
@@ -907,6 +960,38 @@ export default function AdminPage() {
                     </div>
                     <p style={{ color: '#666', fontSize: 11, marginTop: 6 }}>The AI drafts a professional agreement; the client signs it on their account.</p>
                   </div>
+                </div>
+
+                {/* ── Invoices ── */}
+                <div style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid #222' }}>
+                  <div style={{ ...s.fieldLabel, marginBottom: 10 }}>🧾 Invoices</div>
+
+                  {getLeadInvoices(selected.id).map((inv) => (
+                    <div key={inv.id} style={{ padding: '10px 12px', background: '#141414', border: '1px solid #222', borderRadius: 10, marginBottom: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: '#eee', fontSize: 14 }}>
+                          <span style={{ color: '#666', fontSize: 12, marginRight: 6 }}>#{inv.invoice_no}</span>
+                          ${Number(inv.total).toLocaleString()}
+                          <span style={{ color: '#888', fontSize: 12 }}> · {(inv.items?.[0]?.description ?? '').slice(0, 30)}{(inv.items?.length ?? 0) > 1 ? ` +${inv.items.length - 1} more` : ''}</span>
+                        </span>
+                        <span style={{ ...s.smallBadge, background: inv.status === 'paid' ? '#1a2a1a' : inv.status === 'void' ? '#2a1414' : '#2a2a14', color: inv.status === 'paid' ? '#4d4' : inv.status === 'void' ? '#d66' : GOLD }}>{inv.status}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginTop: 6 }}>
+                        <button onClick={() => downloadInvoicePdf({ ...inv, clientName: selected.name, clientEmail: selected.email })} style={{ background: 'transparent', border: 'none', color: GOLD, fontSize: 12, cursor: 'pointer', padding: 0 }}>⬇ Download PDF</button>
+                        {inv.status !== 'paid'
+                          ? <button onClick={() => setInvoiceStatus(inv.id, 'paid')} style={{ background: 'transparent', border: 'none', color: '#4d4', fontSize: 12, cursor: 'pointer', padding: 0 }}>✓ Mark paid</button>
+                          : <button onClick={() => setInvoiceStatus(inv.id, 'sent')} style={{ background: 'transparent', border: 'none', color: '#888', fontSize: 12, cursor: 'pointer', padding: 0 }}>↺ Unpay</button>}
+                        {inv.status !== 'void' && <button onClick={() => setInvoiceStatus(inv.id, 'void')} style={{ background: 'transparent', border: 'none', color: '#a66', fontSize: 12, cursor: 'pointer', padding: 0 }}>Void</button>}
+                      </div>
+                    </div>
+                  ))}
+
+                  <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                    <input value={invDesc} onChange={(e) => setInvDesc(e.target.value)} placeholder="Line item (e.g. Website design)" style={{ flex: 2, padding: '8px 10px', background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, color: '#eee', fontSize: 13 }} />
+                    <input value={invAmount} onChange={(e) => setInvAmount(e.target.value)} type="number" placeholder="$" style={{ width: 90, padding: '8px 10px', background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, color: '#eee', fontSize: 13 }} />
+                    <button onClick={() => createLeadInvoice(selected.id)} disabled={invBusy || !invDesc.trim() || !Number(invAmount)} style={{ ...s.actionBtn, background: GOLD, color: '#000', border: 'none', padding: '8px 14px', fontSize: 13, cursor: 'pointer', opacity: (invBusy || !invDesc.trim() || !Number(invAmount)) ? 0.4 : 1 }}>Invoice</button>
+                  </div>
+                  <p style={{ color: '#666', fontSize: 11, marginTop: 6 }}>{`Single line item here, or tell Sage e.g. "invoice ${selected.name.split(' ')[0]} $500 deposit + $500 on completion".`}</p>
                 </div>
               </div>
             ) : (
