@@ -24,7 +24,7 @@ type Convo = { id: string; status: string; summary: string | null; created_at: s
 type Msg = { conversation_id: string; role: string; content: string; created_at: string }
 type Payment = { id: string; lead_id: string; description: string; amount: number; status: string; created_at: string }
 type Agreement = { id: string; lead_id: string; scope: string; price: number; content: string; status: string; created_at: string; accepted_at: string | null }
-type Invoice = { id: string; invoice_no: number | null; lead_id: string | null; items: { description: string; amount: number }[]; total: number; status: string; notes: string | null; due_date: string | null; created_at: string; paid_at: string | null }
+type Invoice = { id: string; invoice_no: number | null; lead_id: string | null; items: { description: string; amount: number }[]; total: number; currency: string | null; status: string; notes: string | null; due_date: string | null; created_at: string; paid_at: string | null }
 
 const GOLD = '#c9a84c'
 const PAYPAL_HANDLE = process.env.NEXT_PUBLIC_PAYPAL_HANDLE || ''
@@ -228,7 +228,7 @@ export default function AccountPage() {
                         ))}
                       </div>
                       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                        {inv.status !== 'paid' && PAYPAL_HANDLE && (
+                        {inv.status !== 'paid' && inv.status !== 'void' && PAYPAL_HANDLE && (
                           <a href={`https://paypal.me/${PAYPAL_HANDLE}/${inv.total}`} target="_blank" rel="noreferrer" className="sheen flex-1 rounded-xl bg-gradient-to-r from-[#c9a84c] to-[#f5d485] py-3 text-center text-sm font-semibold text-black transition hover:brightness-105">
                             Pay ${Number(inv.total).toLocaleString()}
                           </a>

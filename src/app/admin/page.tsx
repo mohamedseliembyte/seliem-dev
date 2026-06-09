@@ -978,6 +978,7 @@ export default function AdminPage() {
                       </div>
                       <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginTop: 6 }}>
                         <button onClick={() => downloadInvoicePdf({ ...inv, clientName: selected.name, clientEmail: selected.email })} style={{ background: 'transparent', border: 'none', color: GOLD, fontSize: 12, cursor: 'pointer', padding: 0 }}>⬇ Download PDF</button>
+                        {inv.status === 'draft' && <button onClick={() => setInvoiceStatus(inv.id, 'sent')} style={{ background: 'transparent', border: 'none', color: '#6bd', fontSize: 12, cursor: 'pointer', padding: 0 }}>📤 Send to client</button>}
                         {inv.status !== 'paid'
                           ? <button onClick={() => setInvoiceStatus(inv.id, 'paid')} style={{ background: 'transparent', border: 'none', color: '#4d4', fontSize: 12, cursor: 'pointer', padding: 0 }}>✓ Mark paid</button>
                           : <button onClick={() => setInvoiceStatus(inv.id, 'sent')} style={{ background: 'transparent', border: 'none', color: '#888', fontSize: 12, cursor: 'pointer', padding: 0 }}>↺ Unpay</button>}

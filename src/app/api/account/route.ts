@@ -70,12 +70,12 @@ export async function GET(req: NextRequest) {
       .order('created_at', { ascending: false })
     agreements = ags ?? []
 
-    // Invoices the client can see (drafts stay hidden until sent).
+    // Invoices the client can see: only sent + paid (drafts and voided/cancelled stay hidden).
     const { data: invs } = await supabase
       .from('invoices')
       .select('id, invoice_no, lead_id, items, total, currency, status, notes, due_date, created_at, paid_at')
       .in('lead_id', leadIds)
-      .neq('status', 'draft')
+      .in('status', ['sent', 'paid'])
       .order('created_at', { ascending: false })
     invoices = invs ?? []
   }
