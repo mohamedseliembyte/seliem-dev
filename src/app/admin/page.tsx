@@ -1018,7 +1018,7 @@ export default function AdminPage() {
                             {convo.human_takeover ? '✍️ You\'re handling this chat — Sage paused' : '🤖 Sage is handling this chat'}
                           </span>
                           {convo.human_takeover ? (
-                            <button onClick={() => setChatMode(convo.id, false)} style={{ ...s.actionBtn, marginLeft: 'auto', padding: '6px 12px', fontSize: 12, cursor: 'pointer', background: '#1a2a1a', color: '#4d4', border: '1px solid #2a4a2a' }}>🤖 Let AI take over</button>
+                            <button onClick={() => setChatMode(convo.id, false)} style={{ ...s.actionBtn, marginLeft: 'auto', padding: '6px 12px', fontSize: 12, cursor: 'pointer', background: '#1a2a1a', color: '#4d4', border: '1px solid #2a4a2a' }}>🤖 Let AI handle the rest</button>
                           ) : (
                             <button onClick={() => setChatMode(convo.id, true)} style={{ ...s.actionBtn, marginLeft: 'auto', padding: '6px 12px', fontSize: 12, cursor: 'pointer' }}>✍️ Jump in (pause AI)</button>
                           )}
@@ -1059,6 +1059,15 @@ export default function AdminPage() {
                           >
                             Send
                           </button>
+                          {convo.human_takeover && (
+                            <button
+                              onClick={() => setChatMode(convo.id, false)}
+                              title="Hand this conversation back to Sage"
+                              style={{ ...s.actionBtn, background: '#1a2a1a', color: '#4d4', border: '1px solid #2a4a2a', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                            >
+                              🤖 Let AI handle the rest
+                            </button>
+                          )}
                         </div>
                         <p style={{ color: '#666', fontSize: 11, marginTop: 6 }}>Sending a reply takes over the chat — Sage pauses and the visitor talks to you live.</p>
                       </div>

@@ -1,7 +1,13 @@
 // Groq client + the AI concierge's brain (system prompt, guardrails, lead tool).
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const MODEL = 'llama-3.3-70b-versatile'
+// Primary model + automatic fallbacks. If the primary is rate-limited or
+// decommissioned by Groq, we transparently retry the next one so the chat
+// never just dies and falls back. Override via GROQ_MODELS (comma-separated).
+const MODELS = (process.env.GROQ_MODELS || 'llama-3.3-70b-versatile,llama-3.1-8b-instant')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
 
 export const SYSTEM_PROMPT = `You are "Sage", the friendly AI assistant for Seliem.dev — a premium web design and AI automation agency.
 
@@ -146,24 +152,29 @@ export async function groqChat(
     if (useTools.maxTokens) maxTokens = useTools.maxTokens
   }
 
-  const res = await fetch(GROQ_URL, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: MODEL,
-      messages,
-      ...(tools ? { tools, tool_choice: toolChoice } : {}),
-      temperature: 0.6,
-      max_tokens: maxTokens,
-    }),
-  })
+  let lastErr = 'Groq request failed'
+  for (const model of MODELS) {
+    const res = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        messages,
+        ...(tools ? { tools, tool_choice: toolChoice } : {}),
+        temperature: 0.6,
+        max_tokens: maxTokens,
+      }),
+    })
 
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '')
-    throw new Error(`Groq ${res.status}: ${detail.slice(0, 200)}`)
+    if (res.ok) {
+      const data = await res.json()
+      const msg = data.choices?.[0]?.message ?? {}
+      return { content: msg.content ?? null, toolCalls: msg.tool_calls ?? null }
+    }
+
+    // Non-OK (rate limit, deprecated model, transient 5xx) → try the next model.
+    lastErr = `Groq ${res.status} (${model}): ${(await res.text().catch(() => '')).slice(0, 160)}`
+    console.warn('[groq] model failed, falling back:', lastErr)
   }
-
-  const data = await res.json()
-  const msg = data.choices?.[0]?.message ?? {}
-  return { content: msg.content ?? null, toolCalls: msg.tool_calls ?? null }
+  throw new Error(lastErr)
 }

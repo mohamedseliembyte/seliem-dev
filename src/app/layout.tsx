@@ -5,8 +5,27 @@ import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import ChatWidget from '@/components/chat/ChatWidget'
 import ScrollReveal from '@/components/ui/ScrollReveal'
-import CookieBanner from '@/components/ui/CookieBanner'
 import './globals.css'
+
+// Structured data — helps Google show rich results for the business.
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'ProfessionalService',
+  name: 'Seliem.dev',
+  description:
+    'Premium custom websites and AI automations for businesses, creators, and professionals.',
+  url: 'https://seliem.dev',
+  email: 'hello@seliem.dev',
+  image: 'https://seliem.dev/logo.png',
+  priceRange: '$$',
+  founder: { '@type': 'Person', name: 'Mohamed Seliem' },
+  sameAs: [
+    'https://www.instagram.com/seliem.dev',
+    'https://www.tiktok.com/@seliem.dev',
+  ],
+  areaServed: 'Worldwide',
+  serviceType: ['Web Design', 'Website Redesign', 'AI Automation', 'Lead Capture'],
+}
 
 const inter = Inter({
   subsets: ['latin'],
@@ -73,16 +92,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <ChatWidget />
         <ScrollReveal />
-        <CookieBanner />
+        {/* Cookieless analytics only (Vercel) — no consent banner needed. */}
         <Analytics />
         <SpeedInsights />
-        <Script src="https://www.googletagmanager.com/gtag/js?id=G-75NZQG8VB3" strategy="afterInteractive" />
-        <Script id="google-analytics" strategy="afterInteractive">{`
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-          gtag('config', 'G-75NZQG8VB3');
-        `}</Script>
+        <Script id="ld-json" type="application/ld+json" strategy="afterInteractive">
+          {JSON.stringify(jsonLd)}
+        </Script>
       </body>
     </html>
   )

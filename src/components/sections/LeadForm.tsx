@@ -201,7 +201,7 @@ export default function LeadForm() {
                 style={{ opacity: 0, transform: 'translateY(20px)', transition: 'opacity 0.6s ease-out 160ms, transform 0.6s ease-out 160ms' }}
                 className="text-gray-400 text-base leading-relaxed mb-8"
               >
-                Tell me about your business and what you&apos;re looking for. I&apos;ll get back to you
+                Tell me about your business and what you&apos;re looking for. We&apos;ll get back to you
                 within 24 hours.
               </p>
 
@@ -236,7 +236,7 @@ export default function LeadForm() {
                     <CheckCircle className="w-12 h-12 text-[#c9a84c] mx-auto mb-4" aria-hidden="true" />
                     <h3 className="text-xl font-bold text-white mb-2">Message sent!</h3>
                     <p className="text-gray-400 text-sm">
-                      I&apos;ll get back to you within 24 hours.
+                      We&apos;ll get back to you within 24 hours.
                     </p>
                     <button
                       onClick={() => setStatus('idle')}

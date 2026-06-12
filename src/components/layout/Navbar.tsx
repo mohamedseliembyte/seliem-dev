@@ -13,10 +13,9 @@ function TikTokIcon({ className }: { className?: string }) {
 }
 
 const navLinks = [
-  { label: 'Home', href: '/' },
   { label: 'Live Demos', href: '#demos' },
   { label: 'Services', href: '#services' },
-  { label: 'How It Works', href: '#how-it-works' },
+  { label: 'Pricing', href: '#pricing' },
   { label: 'Contact', href: '#contact' },
 ]
 

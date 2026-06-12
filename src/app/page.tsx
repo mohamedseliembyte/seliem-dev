@@ -3,6 +3,8 @@ import Footer from '@/components/layout/Footer'
 import Hero from '@/components/sections/Hero'
 import Demos from '@/components/sections/Demos'
 import Services from '@/components/sections/Services'
+import Pricing from '@/components/sections/Pricing'
+import Testimonials from '@/components/sections/Testimonials'
 import HowItWorks from '@/components/sections/HowItWorks'
 import LeadForm from '@/components/sections/LeadForm'
 import Contact from '@/components/sections/Contact'
@@ -25,6 +27,12 @@ export default function HomePage() {
         </ErrorBoundary>
         <ErrorBoundary>
           <Services />
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <Pricing />
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <Testimonials />
         </ErrorBoundary>
         <ErrorBoundary>
           <HowItWorks />
