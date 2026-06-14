@@ -154,27 +154,37 @@ export async function groqChat(
 
   let lastErr = 'Groq request failed'
   for (const model of MODELS) {
-    const res = await fetch(GROQ_URL, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        messages,
-        ...(tools ? { tools, tool_choice: toolChoice } : {}),
-        temperature: 0.6,
-        max_tokens: maxTokens,
-      }),
-    })
+    // Retry each model once on a transient error (429 rate-limit / 5xx) before
+    // moving on, so a momentary Groq hiccup doesn't drop the visitor's chat.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const res = await fetch(GROQ_URL, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          messages,
+          ...(tools ? { tools, tool_choice: toolChoice } : {}),
+          temperature: 0.6,
+          max_tokens: maxTokens,
+        }),
+      })
 
-    if (res.ok) {
-      const data = await res.json()
-      const msg = data.choices?.[0]?.message ?? {}
-      return { content: msg.content ?? null, toolCalls: msg.tool_calls ?? null }
+      if (res.ok) {
+        const data = await res.json()
+        const msg = data.choices?.[0]?.message ?? {}
+        return { content: msg.content ?? null, toolCalls: msg.tool_calls ?? null }
+      }
+
+      lastErr = `Groq ${res.status} (${model}): ${(await res.text().catch(() => '')).slice(0, 160)}`
+      console.warn('[groq] request failed:', lastErr)
+
+      // Transient → wait briefly and retry the SAME model once.
+      if ((res.status === 429 || res.status >= 500) && attempt === 0) {
+        await new Promise((r) => setTimeout(r, 700))
+        continue
+      }
+      break // permanent error → fall through to the next model
     }
-
-    // Non-OK (rate limit, deprecated model, transient 5xx) → try the next model.
-    lastErr = `Groq ${res.status} (${model}): ${(await res.text().catch(() => '')).slice(0, 160)}`
-    console.warn('[groq] model failed, falling back:', lastErr)
   }
   throw new Error(lastErr)
 }
