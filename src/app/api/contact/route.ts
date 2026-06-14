@@ -135,14 +135,14 @@ export async function POST(req: NextRequest) {
     await resend.emails.send({
       from:    FROM_ADDRESS,
       to:      esc(email) as string,
-      subject: `We received your message, ${esc(name).split(' ')[0]}!`,
+      subject: `Got your message, ${esc(name).split(' ')[0]}! 🙌`,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;color:#111">
-          <h2 style="color:#c9a84c;margin-bottom:16px">Thanks for reaching out!</h2>
+          <h2 style="color:#c9a84c;margin-bottom:16px">Thanks — I'm on it!</h2>
           <p style="margin:0 0 12px">Hi ${esc(name).split(' ')[0]},</p>
-          <p style="margin:0 0 12px">We've received your message and will get back to you within <strong>24–48 hours</strong>.</p>
-          <p style="margin:0 0 24px">In the meantime, feel free to browse our live demos at <a href="https://seliem.dev/#demos" style="color:#c9a84c">seliem.dev</a>.</p>
-          <p style="margin:0;color:#888;font-size:13px">— The Seliem.dev Team</p>
+          <p style="margin:0 0 12px">I've got your message and I'll <strong>text or email you shortly</strong> to talk through your project — usually within a few hours.</p>
+          <p style="margin:0 0 24px">While you wait, take a look at the live demos at <a href="https://seliem.dev/#demos" style="color:#c9a84c">seliem.dev</a>.</p>
+          <p style="margin:0;color:#888;font-size:13px">— Mohamed, Seliem.dev</p>
         </div>
       `,
     })

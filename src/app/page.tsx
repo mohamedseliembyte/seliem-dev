@@ -4,6 +4,7 @@ import Hero from '@/components/sections/Hero'
 import Demos from '@/components/sections/Demos'
 import Services from '@/components/sections/Services'
 import Pricing from '@/components/sections/Pricing'
+import Guarantee from '@/components/sections/Guarantee'
 // Testimonials hidden until real client quotes are available — re-enable below.
 // import Testimonials from '@/components/sections/Testimonials'
 import HowItWorks from '@/components/sections/HowItWorks'
@@ -32,11 +33,10 @@ export default function HomePage() {
         <ErrorBoundary>
           <Pricing />
         </ErrorBoundary>
-        {/* Testimonials hidden until real client quotes exist:
         <ErrorBoundary>
-          <Testimonials />
+          <Guarantee />
         </ErrorBoundary>
-        */}
+        {/* Testimonials hidden until real client quotes exist — re-enable when ready. */}
         <ErrorBoundary>
           <HowItWorks />
         </ErrorBoundary>
