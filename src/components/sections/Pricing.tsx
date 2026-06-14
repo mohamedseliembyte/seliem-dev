@@ -14,7 +14,7 @@ const CAL_URL = '#contact'
 const tiers = [
   {
     name: 'Starter',
-    price: '$750',
+    price: 'Custom quote',
     blurb: 'A polished one-page site to get you online fast.',
     features: [
       'Custom one-page design',
@@ -27,7 +27,7 @@ const tiers = [
   },
   {
     name: 'Premium',
-    price: '$2,500',
+    price: 'Custom quote',
     blurb: 'A full multi-page site built to convert visitors into leads.',
     features: [
       'Up to 6 custom pages',
@@ -40,7 +40,7 @@ const tiers = [
   },
   {
     name: 'Premium + AI',
-    price: '$4,500+',
+    price: 'Custom quote',
     blurb: 'Everything in Premium, plus your own AI sales assistant.',
     features: [
       'Everything in Premium',
@@ -70,7 +70,7 @@ export default function Pricing() {
             <span className="gold-text">no surprises.</span>
           </h2>
           <p className="text-gray-400 text-lg max-w-xl mx-auto">
-            Every project is custom-built. These are starting points — book a call for an exact quote.
+            Every project is custom-built. Book a call and I&apos;ll give you an exact quote — no surprises, no pressure.
           </p>
         </motion.div>
 
@@ -95,7 +95,7 @@ export default function Pricing() {
               )}
               <h3 className="text-lg font-bold text-white">{tier.name}</h3>
               <div className="mt-3 mb-1 flex items-baseline gap-1">
-                <span className="text-4xl font-black gold-text">{tier.price}</span>
+                <span className="text-2xl font-black gold-text">{tier.price}</span>
               </div>
               <p className="text-sm text-gray-400 leading-relaxed mb-6">{tier.blurb}</p>
 
