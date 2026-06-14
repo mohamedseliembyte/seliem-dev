@@ -46,6 +46,10 @@ export async function POST(req: NextRequest) {
   try { body = JSON.parse(raw) } catch { return NextResponse.json({ ok: true }) }
 
   const trigger: string = body?.triggerEvent ?? ''
+  // Only ping for real booking events — ignore meeting-started/ended/transcript/no-show/etc.
+  if (!['BOOKING_CREATED', 'BOOKING_CANCELLED', 'BOOKING_RESCHEDULED', 'BOOKING_REQUESTED'].includes(trigger)) {
+    return NextResponse.json({ ok: true, ignored: trigger })
+  }
   const p = body?.payload ?? {}
   const attendee = (Array.isArray(p.attendees) && p.attendees[0]) || {}
   const name = attendee.name || p.responses?.name?.value || 'Someone'
@@ -71,6 +75,7 @@ export async function POST(req: NextRequest) {
   const head =
     trigger === 'BOOKING_CANCELLED'   ? '❌ <b>Booking cancelled</b>' :
     trigger === 'BOOKING_RESCHEDULED' ? '🔄 <b>Booking rescheduled</b>' :
+    trigger === 'BOOKING_REQUESTED'   ? '📩 <b>New booking request</b>' :
     '📅 <b>New call booked!</b>'
 
   const lines: string[] = [head, '']
