@@ -10,7 +10,7 @@ import { getSupabaseAdmin } from '@/lib/supabase'
 // Each maps to either the CEO briefing or a canned assistant question.
 const COMMANDS: { key: string; label: string; desc: string; q?: string }[] = [
   { key: 'briefing', label: '📊 Daily briefing', desc: 'Full business briefing' },
-  { key: 'leads', label: '🆕 New leads', desc: 'Summary of recent leads', q: 'Summarize the newest leads and what each one wants.' },
+  { key: 'leads', label: '🆕 New inquiries', desc: 'Summary of recent inquiries', q: 'Summarize the newest inquiries and what each one wants.' },
   { key: 'unpaid', label: '💰 Who hasn’t paid', desc: 'Outstanding / overdue payments', q: 'Who has unpaid or overdue payments? List them with amounts.' },
   { key: 'tasks', label: '📋 Tasks', desc: 'Open tasks', q: 'What tasks are open or due? List them.' },
   { key: 'focus', label: '🎯 What to focus on', desc: 'Today’s priorities', q: 'What should I focus on today? Be brief and practical.' },

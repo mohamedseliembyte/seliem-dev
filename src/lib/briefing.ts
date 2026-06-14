@@ -105,10 +105,10 @@ export async function generateBriefing(): Promise<string> {
   return [
     '🚀 <b>Good Morning Mohamed</b>',
     '',
-    '📈 <b>Leads</b>',
-    `• New Leads (7d): ${newLeadsWeek}${wow(newLeadsWeek, newLeadsPrevWeek)}`,
+    '📈 <b>Inquiries</b>',
+    `• New Inquiries (7d): ${newLeadsWeek}${wow(newLeadsWeek, newLeadsPrevWeek)}`,
     `• New Today: ${newLeads}`,
-    `• Total Leads: ${totalLeads}`,
+    `• Total Inquiries: ${totalLeads}`,
     '',
     '💼 <b>Projects</b>',
     `• Active Projects: ${activeProjects}`,
