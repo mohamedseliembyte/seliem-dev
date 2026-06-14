@@ -21,7 +21,7 @@ const tiers = [
       'Mobile-optimized & fast',
       'Contact form + lead alerts',
       'Basic SEO setup',
-      'Launched in 48 hours',
+      'Fast turnaround',
     ],
     featured: false,
   },
