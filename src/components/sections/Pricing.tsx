@@ -7,9 +7,8 @@ import { Check } from 'lucide-react'
 // EDIT ME: prices + features are sensible defaults — tune to your real packages.
 // The "Book a free call" buttons point to CAL_URL below.
 // ─────────────────────────────────────────────────────────────────────────────
-// Where "Book a free call" sends people. Points to the contact form for now —
-// swap in a real scheduling link (Cal.com / Calendly) anytime you set one up.
-const CAL_URL = '#contact'
+// Where "Book a free call" sends people — Mohamed's live Cal.com booking page.
+const CAL_URL = 'https://cal.com/seliem.dev'
 
 const tiers = [
   {
@@ -110,6 +109,8 @@ export default function Pricing() {
 
               <a
                 href={CAL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
                 className={`w-full inline-flex items-center justify-center py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
                   tier.featured
                     ? 'gold-gradient text-black hover:shadow-lg hover:shadow-[#c9a84c]/25 hover:scale-[1.02]'
