@@ -295,15 +295,16 @@ export default function LeadForm() {
                         {errors.email && <p className={errorClass} role="alert">{errors.email.message}</p>}
                       </div>
                       <div>
-                        <label htmlFor="phone" className={labelClass}>Phone</label>
+                        <label htmlFor="phone" className={labelClass}>Phone *</label>
                         <input
                           id="phone"
                           type="tel"
-                          {...register('phone')}
+                          {...register('phone', { required: 'Phone number is required' })}
                           placeholder="(555) 000-0000"
                           className={inputClass}
                           autoComplete="tel"
                         />
+                        {errors.phone && <p className={errorClass} role="alert">{errors.phone.message}</p>}
                       </div>
                     </div>
 
