@@ -3,7 +3,7 @@ import Footer from '@/components/layout/Footer'
 import Hero from '@/components/sections/Hero'
 import Demos from '@/components/sections/Demos'
 import Services from '@/components/sections/Services'
-import Pricing from '@/components/sections/Pricing'
+// Pricing section removed per request.
 // Guarantee section removed per request (the 48-hour claim).
 // Testimonials hidden until real client quotes are available — re-enable below.
 // import Testimonials from '@/components/sections/Testimonials'
@@ -30,10 +30,7 @@ export default function HomePage() {
         <ErrorBoundary>
           <Services />
         </ErrorBoundary>
-        <ErrorBoundary>
-          <Pricing />
-        </ErrorBoundary>
-        {/* Testimonials hidden until real client quotes exist — re-enable when ready. */}
+        {/* Pricing removed per request. Testimonials hidden until real client quotes exist. */}
         <ErrorBoundary>
           <HowItWorks />
         </ErrorBoundary>

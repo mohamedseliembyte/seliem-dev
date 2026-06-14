@@ -15,7 +15,6 @@ function TikTokIcon({ className }: { className?: string }) {
 const navLinks = [
   { label: 'Live Demos', href: '#demos' },
   { label: 'Services', href: '#services' },
-  { label: 'Pricing', href: '#pricing' },
   { label: 'Contact', href: '#contact' },
 ]
 
@@ -87,6 +86,16 @@ export default function Navbar() {
               <Mail className="w-[18px] h-[18px]" />
             </a>
 
+            {/* Book a call — primary CTA */}
+            <a
+              href="https://cal.com/seliem.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden md:inline-flex items-center rounded-full gold-gradient text-black px-4 py-1.5 text-sm font-semibold hover:opacity-90 transition-opacity"
+            >
+              Book a call
+            </a>
+
             {/* Account */}
             <Link
               href="/account"
@@ -124,6 +133,15 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          <a
+            href="https://cal.com/seliem.dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={closeMobile}
+            className="block py-3 text-base font-semibold text-[#c9a84c] border-b border-white/5"
+          >
+            Book a free call
+          </a>
           <Link
             href="/account"
             onClick={closeMobile}
