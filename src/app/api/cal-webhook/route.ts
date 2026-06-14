@@ -50,10 +50,20 @@ export async function POST(req: NextRequest) {
   const attendee = (Array.isArray(p.attendees) && p.attendees[0]) || {}
   const name = attendee.name || p.responses?.name?.value || 'Someone'
   const email = attendee.email || p.responses?.email?.value || ''
-  const phone =
+  let phone: string =
     p.responses?.phone?.value ||
     p.responses?.attendeePhoneNumber?.value ||
+    p.responses?.smsReminderNumber?.value ||
     attendee.phoneNumber || ''
+  // Fallback: scan every booking answer for anything phone-like, regardless of
+  // what the Cal.com question is named.
+  if (!phone && p.responses && typeof p.responses === 'object') {
+    for (const [k, v] of Object.entries(p.responses)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const val = (v as any)?.value
+      if (/phone|mobile|tel/i.test(k) && val) { phone = String(val); break }
+    }
+  }
   const when = fmtTime(p.startTime, p.organizer?.timeZone || attendee.timeZone)
   const title = p.title || p.type || 'Call'
   const notes = p.additionalNotes || p.responses?.notes?.value || ''
