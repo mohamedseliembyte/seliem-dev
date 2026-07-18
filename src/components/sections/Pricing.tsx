@@ -168,7 +168,7 @@ export default function Pricing() {
           <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[#c9a84c]">Monthly care</p>
           <h3 className="text-3xl font-black text-white sm:text-4xl">Keep your website working after launch.</h3>
           <p className="mx-auto mt-4 max-w-xl text-gray-400">
-            Choose ongoing care only if you need it. Plans are month-to-month and do not include third-party subscriptions or major redesigns.
+            Choose ongoing care only if you need it. Plans are month-to-month; major redesigns and services registered for your business are separate.
           </p>
         </div>
 
@@ -229,7 +229,30 @@ export default function Pricing() {
           <p><strong className="block text-white">Domain setup $50</strong>Optional configuration; registration and renewal stay in your name at cost.</p>
           <p><strong className="block text-white">Extra work $50/hr</strong>For requests beyond the written scope or included care allowance.</p>
         </div>
-        <p className="mt-6 text-center text-xs leading-relaxed text-gray-600">Prices are starting estimates, not binding offers. Larger builds, stores, custom apps, usage-based AI, premium software, email, and hosting upgrades are quoted separately. You own client-specific accounts and subscriptions; Seliem.dev covers its own internal development tools.</p>
+        <div className="mx-auto mt-6 max-w-5xl rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+          <h3 className="text-lg font-bold text-white">Your business accounts stay yours</h3>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-gray-400">
+            You are never charged for the tools Seliem.dev uses to do its work. You only pay providers directly for optional accounts or usage created specifically for your business.
+          </p>
+          <ul className="mt-5 grid gap-3 text-sm text-gray-300 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              'Domain registration and renewal',
+              'Professional business email',
+              'Upgraded hosting, if needed',
+              'Premium apps or software you choose',
+              'Payment processing fees',
+              'Business SMS or phone usage',
+              'AI or API usage for your live product',
+              'Other services approved by you first',
+            ].map((item) => (
+              <li key={item} className="flex items-start gap-2">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#c9a84c]" aria-hidden="true" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <p className="mt-6 text-center text-xs leading-relaxed text-gray-600">Prices are starting estimates, not binding offers. Larger builds, stores, and custom apps are quoted separately. No client-owned service is added without your approval.</p>
       </div>
     </section>
   )

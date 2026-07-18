@@ -15,7 +15,7 @@ Include these sections with clear headings:
 - Project Scope (use what's provided)
 - Total Price
 - Payment Terms (default: 50% deposit to begin, remaining 50% on completion, unless otherwise noted)
-- Third-Party Services (Seliem.dev covers its internal development tools; client is responsible for client-owned/client-specific domain, email, premium software, hosting upgrades, payment processing, SMS, and usage-based API/AI fees unless expressly included)
+- Client-Owned Services (the project price covers Seliem.dev's work and working tools; client pays providers directly only for approved services registered for or consumed by their business, including domain, email, upgraded hosting, chosen premium apps, payment processing, business SMS/phone, and live-product API/AI usage, unless expressly included)
 - Optional Maintenance (not included unless written in the scope; basic care may be offered from $30/month with defined limits, while larger projects require a separate plan)
 - Timeline (state "to be confirmed in writing")
 - Revisions (2 rounds included)
@@ -55,8 +55,8 @@ $${Number(p.price).toLocaleString()}
 Payment Terms
 A 50% deposit is due before work begins. The remaining 50% is due before launch, transfer, or final delivery.
 
-Third-Party Services
-Seliem.dev is responsible for its own internal development tools. The Client is responsible for client-owned or client-specific costs—including domain registration and renewal, professional email, premium software, hosting upgrades, payment processing, SMS, and usage-based API or AI services—unless this agreement expressly includes them.
+Client-Owned Services
+The project price covers Seliem.dev's work and the tools it uses to perform that work. The Client pays providers directly only for services registered for or consumed by the Client's business—including domain registration and renewal, professional email, upgraded hosting, premium apps selected by the Client, payment processing, business SMS or phone usage, and live-product API or AI usage—unless this agreement expressly includes them. Seliem.dev will obtain the Client's approval before adding a paid client-owned service.
 
 Optional Maintenance
 Ongoing maintenance is not included unless listed in the Project Scope. Basic care may be offered from $30 per month with defined limits; larger or higher-usage projects require a separate written plan.

@@ -68,10 +68,12 @@ export default function TermsPage() {
 
           <Section title="7. Third-Party Services">
             <p>
-              Seliem.dev pays for its internal development tools. Client-owned or client-specific services—such as
-              domains, professional email, premium software, hosting upgrades, payment processing, SMS, and usage-based
-              API or AI services—are the client&apos;s responsibility unless a written proposal expressly includes them.
-              Those services may have their own terms, price changes, and availability conditions.
+              Your project price covers Seliem.dev&apos;s work and the tools used to perform that work. You pay providers
+              directly only for services registered for or consumed by your business, such as domains, professional
+              email, upgraded hosting, premium apps you select, payment processing, business SMS or phone usage, and
+              live-product API or AI usage, unless your written proposal expressly includes them. We will obtain your
+              approval before adding a paid client-owned service. Those services may have their own terms, price changes,
+              and availability conditions.
             </p>
           </Section>
 
