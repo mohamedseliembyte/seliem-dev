@@ -82,6 +82,16 @@ type Task = {
 
 type EmailDraft = { id: string; to_email: string; to_name: string | null; subject: string; body: string }
 
+type CustomProjectDraft = {
+  client_name: string
+  client_email: string
+  phone: string
+  business_name: string
+  project_scope: string
+  total_price: number | string
+  notes: string
+}
+
 type Invoice = {
   id: string
   invoice_no: number | null
@@ -355,6 +365,49 @@ export default function AdminPage() {
   const [draftBusy, setDraftBusy] = useState<string | null>(null)
   const [draftDone, setDraftDone] = useState<Record<string, string>>({}) // draftId -> 'sent' | 'cancelled' | error
 
+  // ── AI custom-project creator ─────────────────────────────────────────────
+  const emptyCustomProject: CustomProjectDraft = { client_name: '', client_email: '', phone: '', business_name: '', project_scope: '', total_price: '', notes: '' }
+  const [showCustomProject, setShowCustomProject] = useState(false)
+  const [customDescription, setCustomDescription] = useState('')
+  const [customDraft, setCustomDraft] = useState<CustomProjectDraft | null>(null)
+  const [customBusy, setCustomBusy] = useState(false)
+  const [customError, setCustomError] = useState<string | null>(null)
+
+  const analyzeCustomProject = async () => {
+    if (!session || !customDescription.trim() || customBusy) return
+    setCustomBusy(true); setCustomError(null)
+    try {
+      const res = await fetch('/api/admin/custom-project', {
+        method: 'POST', headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'analyze', description: customDescription.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) setCustomError(data.error || 'Could not analyze project.')
+      else setCustomDraft({ ...emptyCustomProject, ...data.project })
+    } catch { setCustomError('Network error.') }
+    setCustomBusy(false)
+  }
+
+  const createCustomProject = async () => {
+    if (!session || !customDraft || customBusy) return
+    setCustomBusy(true); setCustomError(null)
+    try {
+      const res = await fetch('/api/admin/custom-project', {
+        method: 'POST', headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create', ...customDraft }),
+      })
+      const data = await res.json()
+      if (!res.ok) setCustomError(data.error || 'Could not create contract.')
+      else {
+        if (data.lead) setLeads((rows) => [data.lead, ...rows.filter((row) => row.id !== data.lead.id)])
+        if (data.agreement) setAgreements((rows) => [data.agreement, ...rows])
+        if (data.lead) setSelected(data.lead)
+        setCustomDescription(''); setCustomDraft(null); setShowCustomProject(false)
+      }
+    } catch { setCustomError('Network error.') }
+    setCustomBusy(false)
+  }
+
   const askSage = async () => {
     const question = askQ.trim()
     if (!session || !question || askBusy) return
@@ -554,6 +607,8 @@ export default function AdminPage() {
           <h1 className="gold-text" style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Admin</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <a href="/admin/prospects" style={{ ...s.signOutBtn, textDecoration: 'none' }}>Prospect leads</a>
+          <button onClick={() => { setShowCustomProject(true); setCustomError(null) }} style={{ ...s.signOutBtn, background: GOLD, color: '#000', borderColor: GOLD, fontWeight: 700 }}>＋ Custom project</button>
           <button onClick={() => setShowAssistant(true)} style={s.signOutBtn}>🤖 Ask Sage</button>
           <button onClick={() => setShowTasks(true)} style={s.signOutBtn}>
             📋 Tasks{openTasks > 0 ? ` (${openTasks})` : ''}
@@ -675,6 +730,47 @@ export default function AdminPage() {
           )
         })}
       </div>
+
+      {/* ── AI custom-project drawer ─────────────────────────────────────── */}
+      {showCustomProject && (
+        <div style={s.overlay} onClick={() => setShowCustomProject(false)}>
+          <div style={s.drawer} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <h2 className="gold-text" style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>＋ New custom project</h2>
+              <button onClick={() => setShowCustomProject(false)} style={s.closeBtn}>✕</button>
+            </div>
+            <p style={{ color: '#888', fontSize: 13, lineHeight: 1.5 }}>Tell Sage what is happening in your own words. It will extract the client, scope, and price for you to correct before creating the contract.</p>
+
+            {!customDraft ? (
+              <>
+                <textarea value={customDescription} onChange={(e) => setCustomDescription(e.target.value)} rows={9} placeholder="Example: My friend John owns Crown Barbers. He needs a five-page website with booking, domain setup, and two revisions. We agreed on $1,800. His email is john@example.com…" style={{ ...s.notesInput, marginTop: 10 }} />
+                <button onClick={analyzeCustomProject} disabled={customBusy || !customDescription.trim()} style={{ ...s.actionBtn, width: '100%', marginTop: 10, background: GOLD, color: '#000', border: 'none', cursor: 'pointer', opacity: customBusy || !customDescription.trim() ? 0.4 : 1 }}>
+                  {customBusy ? 'Sage is preparing it…' : '✨ Prepare project'}
+                </button>
+              </>
+            ) : (
+              <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <input value={customDraft.client_name} onChange={(e) => setCustomDraft({ ...customDraft, client_name: e.target.value })} placeholder="Client name" style={s.customInput} />
+                  <input value={customDraft.client_email} onChange={(e) => setCustomDraft({ ...customDraft, client_email: e.target.value })} placeholder="Client email" type="email" style={s.customInput} />
+                  <input value={customDraft.phone} onChange={(e) => setCustomDraft({ ...customDraft, phone: e.target.value })} placeholder="Phone (optional)" style={s.customInput} />
+                  <input value={customDraft.business_name} onChange={(e) => setCustomDraft({ ...customDraft, business_name: e.target.value })} placeholder="Business (optional)" style={s.customInput} />
+                </div>
+                <textarea value={customDraft.project_scope} onChange={(e) => setCustomDraft({ ...customDraft, project_scope: e.target.value })} rows={6} placeholder="Contract scope and deliverables" style={{ ...s.notesInput, marginTop: 0 }} />
+                <input value={customDraft.total_price} onChange={(e) => setCustomDraft({ ...customDraft, total_price: e.target.value })} type="number" min="1" placeholder="Total project price ($)" style={s.customInput} />
+                {customDraft.notes && <div style={{ padding: 10, borderRadius: 10, background: '#1b180d', border: '1px solid #3a3218', color: '#d8bd69', fontSize: 12, lineHeight: 1.5 }}>Sage notes: {customDraft.notes}</div>}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => setCustomDraft(null)} style={{ ...s.actionBtn, cursor: 'pointer' }}>← Change description</button>
+                  <button onClick={createCustomProject} disabled={customBusy || !customDraft.client_name.trim() || !customDraft.client_email.includes('@') || !customDraft.project_scope.trim() || !Number(customDraft.total_price)} style={{ ...s.actionBtn, flex: 1, background: GOLD, color: '#000', border: 'none', cursor: 'pointer', opacity: customBusy || !customDraft.client_name.trim() || !customDraft.client_email.includes('@') || !customDraft.project_scope.trim() || !Number(customDraft.total_price) ? 0.4 : 1 }}>
+                    {customBusy ? 'Creating contract…' : '📄 Create contract'}
+                  </button>
+                </div>
+              </div>
+            )}
+            {customError && <p style={{ color: '#f88', fontSize: 13, marginTop: 10 }}>{customError}</p>}
+          </div>
+        </div>
+      )}
 
       {/* ── Ask Sage drawer (admin AI assistant) ───────────────────────────── */}
       {showAssistant && (
@@ -1125,4 +1221,5 @@ const s = {
   notesInput: { width: '100%', marginTop: 4, padding: 12, background: '#0a0a0a', border: '1px solid #222', borderRadius: 12, color: '#ddd', fontSize: 13, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 } as React.CSSProperties,
   actionBtn: { background: '#1c1c1c', color: '#eee', border: '1px solid #333', borderRadius: 10, padding: '10px 16px', textDecoration: 'none', fontSize: 14, transition: 'all .15s' } as React.CSSProperties,
   dateInput: { background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, color: '#ddd', fontSize: 13, padding: '6px 10px', colorScheme: 'dark' } as React.CSSProperties,
+  customInput: { width: '100%', padding: '10px 12px', background: '#0a0a0a', border: '1px solid #222', borderRadius: 10, color: '#eee', fontSize: 13 } as React.CSSProperties,
 }
