@@ -5,7 +5,7 @@ import { sendTelegramMessage } from '@/lib/telegram'
 
 // Scheduled daily (Vercel Cron) — sends the CEO briefing to Telegram.
 export async function GET(req: NextRequest) {
-  if (process.env.CRON_SECRET && req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET || req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {

@@ -38,7 +38,7 @@ function MacBtn({
   icon: string
 }) {
   const [showTip, setShowTip] = useState(false)
-  const timerRef    = useRef<ReturnType<typeof setTimeout>>()
+  const timerRef    = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const longPressRef = useRef(false)
 
   const handleTouchStart = () => {

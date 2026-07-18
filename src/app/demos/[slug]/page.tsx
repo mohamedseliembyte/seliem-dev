@@ -40,12 +40,12 @@ export default function DemoRoutePage({ params, searchParams }: Props) {
             <ArrowLeft className="w-4 h-4" />
             Back to Seliem.dev
           </Link>
-          <a
+          <Link
             href="/#contact"
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold gold-gradient text-black hover:shadow-md hover:shadow-[#c9a84c]/20 transition-all"
           >
             Get This Website
-          </a>
+          </Link>
         </div>
       )}
 

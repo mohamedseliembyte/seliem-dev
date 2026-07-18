@@ -776,6 +776,8 @@ export default function AdminPage() {
               {tasks.map((t) => {
                 const done = t.status === 'done'
                 const ln = leadName(t.lead_id)
+                // Comparing with wall-clock time is intentional for this live admin view.
+                // eslint-disable-next-line react-hooks/purity
                 const overdue = !done && t.due_date && new Date(t.due_date).getTime() < Date.now()
                 return (
                   <div key={t.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', background: '#141414', border: '1px solid #222', borderRadius: 10 }}>

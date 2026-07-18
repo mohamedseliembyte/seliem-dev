@@ -67,7 +67,7 @@ export default function Contact() {
             style={{ opacity: 0, transform: 'translateY(16px)', transition: 'opacity 0.5s ease-out, transform 0.5s ease-out' }}
             className="text-xs font-semibold uppercase tracking-widest text-[#c9a84c] mb-3"
           >
-            Let's Stay Connected
+            Let&apos;s Stay Connected
           </p>
           <h2
             data-animate

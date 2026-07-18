@@ -7,7 +7,7 @@ import { runPaymentReminders, runAgreementReminders, runArchiveConversations } f
 // archive-conversations separately, this single route runs all three. Each is
 // wrapped in try/catch so one failure never blocks the others.
 export async function GET(req: NextRequest) {
-  if (process.env.CRON_SECRET && req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET || req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

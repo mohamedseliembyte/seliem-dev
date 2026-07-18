@@ -46,6 +46,12 @@ function effectiveSid(user: GoogleUser | null): string {
   return getSessionId()
 }
 
+async function chatHeaders(): Promise<Record<string, string>> {
+  const { data } = await getSupabaseBrowser().auth.getSession()
+  const token = data.session?.access_token
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 export default function ChatWidget() {
   const pathname = usePathname()
   const isAdmin = pathname?.startsWith('/admin')
@@ -88,7 +94,9 @@ export default function ChatWidget() {
     const sid = effectiveSid(user)
     ;(async () => {
       try {
-        const res = await fetch(`/api/chat/messages?session_id=${encodeURIComponent(sid)}`)
+        const res = await fetch(`/api/chat/messages?session_id=${encodeURIComponent(sid)}`, {
+          headers: await chatHeaders(),
+        })
         const data = await res.json()
         const hist = data.messages ?? []
         if (hist.length > 0) {
@@ -110,7 +118,9 @@ export default function ChatWidget() {
     const sid = effectiveSid(user)
     const tick = async () => {
       try {
-        const res = await fetch(`/api/chat/messages?session_id=${encodeURIComponent(sid)}&after=${encodeURIComponent(lastPollRef.current)}`)
+        const res = await fetch(`/api/chat/messages?session_id=${encodeURIComponent(sid)}&after=${encodeURIComponent(lastPollRef.current)}`, {
+          headers: await chatHeaders(),
+        })
         const data = await res.json()
         if (data.human) setRepActive(true)
         const newReps = (data.messages ?? []).filter((m: { role: string }) => m.role === 'human')
@@ -187,14 +197,13 @@ export default function ChatWidget() {
     setMessages((m) => [...m, { role: 'user', content: text }])
     setSending(true)
     try {
+      const authHeaders = await chatHeaders()
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
           session_id: effectiveSid(user),
           message: text,
-          // Pass Google user info if signed in (for higher limits + auto lead capture)
-          ...(user ? { user_email: user.email, user_name: user.name } : {}),
         }),
       })
       const data = await res.json()
