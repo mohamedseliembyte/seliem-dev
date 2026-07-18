@@ -267,9 +267,11 @@ export async function POST(req: NextRequest) {
         message: args.summary || message,
         phone: args.phone || null,
         business_name: args.business_name || null,
+        project_name: args.project_name || null,
         business_type: args.business_type || null,
         budget: args.budget || null,
         goals: args.goals || null,
+        domain_status: ['has', 'wants', 'needs-help', 'unknown'].includes(args.domain_status) ? args.domain_status as 'has' | 'wants' | 'needs-help' | 'unknown' : null,
       })
 
       // Link conversation → lead and mark it
@@ -289,9 +291,11 @@ export async function POST(req: NextRequest) {
           message: `🤖 Captured by AI chat:\n${args.summary || ''}`,
           phone: args.phone,
           businessName: args.business_name,
+          projectName: args.project_name,
           businessType: args.business_type,
           budget: args.budget,
           goals: args.goals,
+          domainStatus: args.domain_status,
         })
 
         // Offer a one-tap "jump in" so you can take over this live chat from Telegram.

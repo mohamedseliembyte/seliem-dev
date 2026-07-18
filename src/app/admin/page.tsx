@@ -17,6 +17,7 @@ type Lead = {
   email: string
   phone: string | null
   business_name: string | null
+  project_name: string | null
   business_type: string | null
   budget: string | null
   goals: string | null
@@ -575,7 +576,7 @@ export default function AdminPage() {
   }
 
   const exportCsv = () => {
-    const cols = ['customer_no', 'name', 'email', 'phone', 'business_name', 'business_type', 'budget', 'type', 'status', 'domain_status', 'duplicate_count', 'goals', 'message', 'created_at'] as const
+    const cols = ['customer_no', 'name', 'email', 'phone', 'business_name', 'project_name', 'business_type', 'budget', 'type', 'status', 'domain_status', 'duplicate_count', 'goals', 'message', 'created_at'] as const
     const cell = (v: unknown) => { const str = String(v ?? ''); return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str }
     const csv = [cols.join(','), ...filtered.map((l) => cols.map((c) => cell((l as Record<string, unknown>)[c])).join(','))].join('\n')
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
@@ -955,6 +956,7 @@ export default function AdminPage() {
                 <Field label="Email" value={selected.email} />
                 {selected.phone && selected.phone !== 'N/A' && <Field label="Phone" value={selected.phone} />}
                 {selected.business_name && selected.business_name !== 'N/A' && <Field label="Business" value={selected.business_name} />}
+                {selected.project_name && <Field label="Project name" value={selected.project_name} />}
                 {selected.business_type && selected.business_type !== 'N/A' && <Field label="Business type" value={selected.business_type} />}
                 {selected.budget && <Field label="Budget" value={selected.budget} />}
                 {selected.goals && <Field label="Goals" value={selected.goals} />}

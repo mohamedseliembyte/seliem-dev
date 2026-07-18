@@ -26,6 +26,7 @@ STRICT RULES:
 
 QUALIFY NATURALLY (one or two questions at a time, never interrogate):
 - What kind of business or project they have
+- ALWAYS ask whether they already have a project name in mind. It is completely fine if they do not; offer to help shape one later.
 - What they need (website, automation, or both) and their goals
 - Rough budget range and timeline, only if they're comfortable sharing
 - ALWAYS ask whether they already have a domain name and professional email, or want us to set that up (it's a standard add-on)
@@ -49,13 +50,14 @@ export const CAPTURE_LEAD_TOOL = {
         email: { type: 'string', description: 'Visitor email address' },
         phone: { type: 'string', description: 'Phone number if provided' },
         business_name: { type: 'string', description: 'Their business name if provided' },
+        project_name: { type: 'string', description: 'The name they have in mind for this project, if any' },
         business_type: { type: 'string', description: 'Type of business/industry' },
         budget: { type: 'string', description: 'Rough budget range if shared' },
         goals: { type: 'string', description: 'What they want to achieve' },
         domain_status: {
           type: 'string',
           enum: ['has', 'wants', 'needs-help', 'unknown'],
-          description: 'Whether they already have a domain/email or want help setting one up',
+          description: 'Whether they already have a domain name or want help setting one up',
         },
         summary: { type: 'string', description: 'A concise summary of the visitor\'s needs for the team' },
       },

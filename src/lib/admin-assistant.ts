@@ -11,7 +11,7 @@ export async function buildBusinessContext(): Promise<string> {
 
   const { data: leads } = await supabase
     .from('leads')
-    .select('customer_no, name, email, business_name, business_type, budget, goals, status, domain_status, created_at')
+    .select('customer_no, name, email, business_name, project_name, business_type, budget, goals, status, domain_status, created_at')
     .order('created_at', { ascending: false })
     .limit(40)
 
@@ -40,10 +40,10 @@ export async function buildBusinessContext(): Promise<string> {
   lines.push('')
   lines.push(`LEADS — total ${all.length}, new in 24h ${newCount}. By status: new ${byStatus('new')}, contacted ${byStatus('contacted')}, qualified ${byStatus('qualified')}, won ${byStatus('won')}, lost ${byStatus('lost')}.`)
   lines.push('')
-  lines.push('RECENT LEADS (name, email, business, budget, status, domain, what they want):')
+  lines.push('RECENT LEADS (name, email, business, project name, budget, status, domain, what they want):')
   all.slice(0, 15).forEach((l) => {
     const wants = l.goals ? ` · wants: ${clean(l.goals, 100)}` : ''
-    lines.push(`#${l.customer_no ?? '?'} ${clean(l.name, 60)} (${clean(l.email, 80)}) — ${clean(l.business_name, 60) || 'N/A'} · ${clean(l.budget, 30) || 'no budget'} · status: ${clean(l.status, 20)} · domain: ${clean(l.domain_status, 20) || 'unknown'}${wants}`)
+    lines.push(`#${l.customer_no ?? '?'} ${clean(l.name, 60)} (${clean(l.email, 80)}) — business: ${clean(l.business_name, 60) || 'N/A'} · project: ${clean(l.project_name, 60) || 'unnamed'} · ${clean(l.budget, 30) || 'no budget'} · status: ${clean(l.status, 20)} · domain: ${clean(l.domain_status, 20) || 'unknown'}${wants}`)
   })
   lines.push('')
 
