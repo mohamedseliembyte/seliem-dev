@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   // Their inquiries (case-insensitive email match)
   const { data: leads } = await supabase
     .from('leads')
-    .select('id, created_at, type, business_name, budget, goals, message, status, domain_status')
+    .select('id, created_at, type, business_name, project_name, budget, goals, message, status, domain_status')
     .ilike('email', email)
     .order('created_at', { ascending: false })
     .limit(50)

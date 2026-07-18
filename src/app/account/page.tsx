@@ -14,6 +14,7 @@ type Lead = {
   created_at: string
   type: string
   business_name: string | null
+  project_name: string | null
   budget: string | null
   goals: string | null
   message: string
@@ -152,7 +153,7 @@ export default function AccountPage() {
                 {leads.map((l) => (
                   <div key={l.id} className="card-lift rounded-2xl border border-white/10 bg-[#141414] p-5">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="font-semibold text-gray-100">{l.business_name && l.business_name !== 'N/A' ? l.business_name : 'Your project'}</span>
+                      <span className="font-semibold text-gray-100">{l.project_name || (l.business_name && l.business_name !== 'N/A' ? l.business_name : 'Your project')}</span>
                       <StatusPill status={l.status} />
                     </div>
                     {l.goals && <p className="mt-2 text-sm text-gray-400">{l.goals}</p>}

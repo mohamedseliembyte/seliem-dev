@@ -23,10 +23,12 @@ export type LeadAlert = {
   email: string
   message: string
   businessName?: string
+  projectName?: string
   phone?: string
   businessType?: string
   budget?: string
   goals?: string
+  domainStatus?: string
 }
 
 /** Build a nicely formatted HTML message for a lead. */
@@ -39,9 +41,11 @@ function formatLead(lead: LeadAlert): string {
   lines.push(`📧 <b>Email:</b> ${e(lead.email)}`)
   if (lead.phone && lead.phone !== 'N/A')        lines.push(`📱 <b>Phone:</b> ${e(lead.phone)}`)
   if (lead.businessName && lead.businessName !== 'N/A') lines.push(`🏢 <b>Business:</b> ${e(lead.businessName)}`)
+  if (lead.projectName)                            lines.push(`🗂 <b>Project:</b> ${e(lead.projectName)}`)
   if (lead.businessType && lead.businessType !== 'N/A') lines.push(`🏷 <b>Type:</b> ${e(lead.businessType)}`)
   if (lead.budget)                               lines.push(`💰 <b>Budget:</b> ${e(lead.budget)}`)
   if (lead.goals)                                lines.push(`🎯 <b>Goals:</b> ${e(lead.goals)}`)
+  if (lead.domainStatus)                         lines.push(`🌐 <b>Domain:</b> ${e(lead.domainStatus)}`)
   lines.push('')
   lines.push(`💬 <b>Message:</b>\n${e(lead.message)}`)
 

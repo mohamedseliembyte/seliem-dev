@@ -29,9 +29,11 @@ export type LeadRecord = {
   message: string
   phone?: string | null
   business_name?: string | null
+  project_name?: string | null
   business_type?: string | null
   budget?: string | null
   goals?: string | null
+  domain_status?: 'has' | 'wants' | 'needs-help' | 'unknown' | null
 }
 
 /**
@@ -53,7 +55,7 @@ export async function saveLead(lead: LeadRecord): Promise<string | null> {
     if (email && email.includes('@')) {
       const { data: existing } = await supabase
         .from('leads')
-        .select('id, message, duplicate_count, phone, business_name, business_type, budget, goals')
+        .select('id, message, duplicate_count, phone, business_name, project_name, business_type, budget, goals, domain_status')
         .ilike('email', email)
         .order('created_at', { ascending: true })
         .limit(1)
@@ -72,9 +74,11 @@ export async function saveLead(lead: LeadRecord): Promise<string | null> {
             // Backfill only fields the original lead is missing
             phone:         existing.phone         || lead.phone         || null,
             business_name: existing.business_name || lead.business_name || null,
+            project_name:  existing.project_name  || lead.project_name  || null,
             business_type: existing.business_type || lead.business_type || null,
             budget:        existing.budget        || lead.budget        || null,
             goals:         existing.goals         || lead.goals         || null,
+            domain_status: existing.domain_status || lead.domain_status || null,
           })
           .eq('id', existing.id)
         if (mErr) console.error('[supabase] saveLead merge error:', mErr.message)
@@ -91,9 +95,11 @@ export async function saveLead(lead: LeadRecord): Promise<string | null> {
         message:       lead.message,
         phone:         lead.phone || null,
         business_name: lead.business_name || null,
+        project_name:  lead.project_name || null,
         business_type: lead.business_type || null,
         budget:        lead.budget || null,
         goals:         lead.goals || null,
+        domain_status: lead.domain_status || null,
         source:        'website_form',
         status:        'new',
       })
