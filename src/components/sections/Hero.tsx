@@ -147,10 +147,11 @@ export default function Hero() {
         canvas.getContext('webgl') ||
         (canvas.getContext('experimental-webgl') as WebGLRenderingContext | null)
       if (gl) {
-        setMeshReady(true)
+        const frame = requestAnimationFrame(() => setMeshReady(true))
         // Release the test context immediately to avoid exhausting mobile GPU limits
         const ext = gl.getExtension('WEBGL_lose_context')
         ext?.loseContext()
+        return () => cancelAnimationFrame(frame)
       }
     } catch {
       // WebGL unavailable — CSS fallback will render

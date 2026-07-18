@@ -23,7 +23,7 @@ async function authorize(
 
   const email = data.user.email.toLowerCase()
   const admins = allowedAdmins()
-  if (admins.length > 0 && !admins.includes(email)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (admins.length === 0 || !admins.includes(email)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   return email
 }

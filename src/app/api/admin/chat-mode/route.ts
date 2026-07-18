@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   if (userErr || !userData?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const email = userData.user.email.toLowerCase()
   const admins = allowedAdmins()
-  if (admins.length > 0 && !admins.includes(email)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (admins.length === 0 || !admins.includes(email)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   let body: { conversation_id?: string; human_takeover?: boolean }
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }) }

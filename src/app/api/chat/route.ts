@@ -5,6 +5,7 @@ import { notifyLead } from '@/lib/telegram'
 import { sendTelegramMessage, sendTelegramControl, escapeHtml } from '@/lib/telegram'
 import { groqChat, SYSTEM_PROMPT, type ChatMessage } from '@/lib/groq'
 import { maybeEmailClientReply } from '@/lib/notify-client'
+import { canAccessChatSession, getVerifiedChatUser } from '@/lib/chat-auth'
 
 // ── Tiered rate limits: anonymous = 15/hr, signed-in = 100/hr ────────────────
 const ANON_LIMIT = 15
@@ -15,6 +16,11 @@ function isLimited(key: string, isAuthenticated: boolean): boolean {
   const max = isAuthenticated ? AUTH_LIMIT : ANON_LIMIT
   const now = Date.now()
   const e = rl.get(key)
+  if (rl.size > 10_000) {
+    for (const [candidate, value] of rl) {
+      if (now > value.resetAt) rl.delete(candidate)
+    }
+  }
   if (!e || now > e.resetAt) {
     rl.set(key, { count: 1, resetAt: now + 3_600_000 })
     return false
@@ -65,7 +71,7 @@ async function getConvoIdentityLabel(
 }
 
 export async function POST(req: NextRequest) {
-  let body: { session_id?: string; message?: string; user_email?: string; user_name?: string }
+  let body: { session_id?: string; message?: string }
   try {
     body = await req.json()
   } catch {
@@ -74,10 +80,6 @@ export async function POST(req: NextRequest) {
 
   const sessionId = (body.session_id ?? '').trim()
   const message = (body.message ?? '').trim()
-  const userEmail = (body.user_email ?? '').trim()
-  const userName = (body.user_name ?? '').trim()
-  const isAuthenticated = Boolean(userEmail && userEmail.includes('@'))
-
   if (!sessionId || !message) {
     return NextResponse.json({ error: 'Missing session_id or message' }, { status: 400 })
   }
@@ -85,23 +87,35 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ reply: "That's a long one! Could you shorten it a little?" })
   }
 
-  // Tiered rate limit (graceful, not an error)
-  if (isLimited(sessionId, isAuthenticated)) {
+  const supabase = getSupabaseAdmin()
+  if (!supabase) {
+    return NextResponse.json({ reply: FALLBACK })
+  }
+
+  const verifiedUser = await getVerifiedChatUser(req, supabase)
+  if (!canAccessChatSession(sessionId, verifiedUser)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  const userEmail = verifiedUser?.email ?? ''
+  const userName = verifiedUser?.name ?? ''
+  const isAuthenticated = verifiedUser !== null
+  const forwardedFor = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+  const clientAddress = forwardedFor || req.headers.get('x-real-ip') || 'unknown'
+  const rateLimitKey = isAuthenticated ? `user:${userEmail}` : `anon:${clientAddress}:${sessionId}`
+
+  // This per-instance guard is a backstop. Production should additionally use
+  // a durable edge/WAF rate limit because serverless instances do not share memory.
+  if (isLimited(rateLimitKey, isAuthenticated)) {
     if (!isAuthenticated) {
       return NextResponse.json({
         reply:
-          "You've reached the message limit for guests. Sign in with Google (top-right) for unlimited messages — or leave your email and our team will follow up! 🙏",
+          "You've reached the message limit for guests. Sign in with Google (top-right) for more messages — or leave your email and our team will follow up! 🙏",
       })
     }
     return NextResponse.json({
       reply:
         "I've hit my message limit for now 🙏 — our team will follow up with you directly!",
     })
-  }
-
-  const supabase = getSupabaseAdmin()
-  if (!supabase) {
-    return NextResponse.json({ reply: FALLBACK })
   }
 
   try {

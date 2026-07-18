@@ -541,7 +541,7 @@ export function RequestForm({ demo }: BookingFlowProps) {
         </div>
         <h3 className="text-lg font-bold mb-2" style={{ color: demo.theme.text }}>Request Received!</h3>
         <p className="text-sm" style={{ color: demo.theme.textMuted }}>
-          We'll reach out within 24 hours to confirm your appointment.
+          We&apos;ll reach out within 24 hours to confirm your appointment.
         </p>
         <button
           onClick={() => { setSubmitted(false); setForm({ name: '', email: '', phone: '', date: '', message: '' }) }}

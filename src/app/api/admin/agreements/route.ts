@@ -14,7 +14,7 @@ async function authorize(req: NextRequest, supabase: NonNullable<ReturnType<type
   const { data, error } = await supabase.auth.getUser(token)
   if (error || !data?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const admins = allowedAdmins()
-  if (admins.length > 0 && !admins.includes(data.user.email.toLowerCase())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (admins.length === 0 || !admins.includes(data.user.email.toLowerCase())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   return data.user.email.toLowerCase()
 }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
+import { canAccessChatSession, getVerifiedChatUser } from '@/lib/chat-auth'
 
 // Lightweight polling endpoint: the chat widget calls this to pick up new
 // messages (especially live replies from a human rep). Keyed by session_id.
@@ -12,6 +13,11 @@ export async function GET(req: NextRequest) {
   const sessionId = (url.searchParams.get('session_id') ?? '').trim()
   const after = url.searchParams.get('after') // ISO timestamp, optional
   if (!sessionId) return NextResponse.json({ messages: [], human: false })
+
+  const user = await getVerifiedChatUser(req, supabase)
+  if (!canAccessChatSession(sessionId, user)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const { data: convo } = await supabase
     .from('conversations')

@@ -5,7 +5,7 @@ import { runPaymentReminders } from '@/lib/cron-jobs'
 // Direct endpoint (still callable on its own; auth via CRON_SECRET).
 // The scheduled run happens via the consolidated /api/cron/maintenance route.
 export async function GET(req: NextRequest) {
-  if (process.env.CRON_SECRET && req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET || req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   const result = await runPaymentReminders()
