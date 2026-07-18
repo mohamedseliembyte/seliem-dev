@@ -62,6 +62,9 @@ table tbody tr:hover { background: rgba(255,255,255,.018); }
   .prospects-page table th:nth-child(3), .prospects-page table td:nth-child(3),
   .prospects-page table th:nth-child(4), .prospects-page table td:nth-child(4) { display: none; }
   .prospects-page table th, .prospects-page table td { padding: 12px 9px; }
+  .prospect-toolbar { position: static !important; }
+  .prospect-toolbar > * { min-height: 42px; }
+  .prospect-item { display: flex !important; flex-direction: column !important; align-items: stretch !important; }
 }
 
 @layer utilities {
