@@ -80,6 +80,11 @@ table tbody tr:hover { background: rgba(255,255,255,.018); }
   .prospect-toolbar { position: static !important; }
   .prospect-toolbar > * { min-height: 42px; }
   .prospect-item { display: flex !important; flex-direction: column !important; align-items: stretch !important; }
+  .prospect-detail-page { padding-left: 14px !important; padding-right: 14px !important; }
+  .prospect-detail-page > header { flex-direction: column; align-items: flex-start !important; }
+  .prospect-detail-page > header select { width: 100%; min-height: 44px; }
+  .prospect-detail-page > div:last-child { grid-template-columns: 1fr !important; }
+  .prospect-detail-page > div:last-child > section:last-child > div:nth-of-type(2) { grid-template-columns: 1fr !important; }
 }
 
 @media (max-width: 430px) {
@@ -88,6 +93,8 @@ table tbody tr:hover { background: rgba(255,255,255,.018); }
   .prospects-page header { flex-direction: column; }
   .prospects-page header > div:last-child { width: 100%; }
   .prospects-page header > div:last-child > * { flex: 1; min-height: 44px; }
+  .prospect-detail-page nav { align-items: flex-start !important; }
+  .prospect-detail-page nav button { min-height: 44px; }
 }
 
 @layer utilities {

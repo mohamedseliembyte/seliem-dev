@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { getSupabaseBrowser } from '@/lib/supabase-client'
@@ -613,7 +614,7 @@ export default function AdminPage() {
           <h1 className="gold-text" style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Admin</h1>
         </div>
         <div className="admin-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <a href="/admin/prospects" style={{ ...s.signOutBtn, textDecoration: 'none' }}>Prospect leads</a>
+          <Link href="/admin/prospects" style={{ ...s.signOutBtn, textDecoration: 'none' }}>Prospect leads</Link>
           <button onClick={() => { setShowCustomProject(true); setCustomError(null) }} style={{ ...s.signOutBtn, background: GOLD, color: '#000', borderColor: GOLD, fontWeight: 700 }}>＋ Custom project</button>
           <button onClick={() => setShowAssistant(true)} style={s.signOutBtn}>🤖 Ask Sage</button>
           <button onClick={() => setShowTasks(true)} style={s.signOutBtn}>
