@@ -3,50 +3,48 @@
 import { motion } from 'framer-motion'
 import { Check } from 'lucide-react'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// EDIT ME: prices + features are sensible defaults — tune to your real packages.
-// The "Book a free call" buttons point to CAL_URL below.
-// ─────────────────────────────────────────────────────────────────────────────
-// Where "Book a free call" sends people — Mohamed's live Cal.com booking page.
 const CAL_URL = 'https://cal.com/seliem.dev'
 
 const tiers = [
   {
-    name: 'Starter',
-    price: 'Custom quote',
-    blurb: 'A polished one-page site to get you online fast.',
+    name: 'Landing Page',
+    price: '$500',
+    suffix: 'starting at',
+    blurb: 'A focused one-page presence built to turn visits into inquiries.',
     features: [
       'Custom one-page design',
       'Mobile-optimized & fast',
       'Contact form + lead alerts',
       'Basic SEO setup',
-      'Fast turnaround',
+      'One revision round',
     ],
     featured: false,
   },
   {
-    name: 'Premium',
-    price: 'Custom quote',
-    blurb: 'A full multi-page site built to convert visitors into leads.',
+    name: 'Business Website',
+    price: '$900+',
+    suffix: 'starting at',
+    blurb: 'A complete site for businesses ready to look established and grow.',
     features: [
       'Up to 6 custom pages',
       'Booking & lead capture',
       'SEO + analytics',
-      'Copywriting included',
-      '30 days of support',
+      'Two revision rounds',
+      'Launch support',
     ],
     featured: true,
   },
   {
-    name: 'Premium + AI',
-    price: 'Custom quote',
-    blurb: 'Everything in Premium, plus your own AI sales assistant.',
+    name: 'Growth + AI',
+    price: '$1,500+',
+    suffix: 'starting at',
+    blurb: 'A lead-generating website with booking, CRM, or AI automation.',
     features: [
-      'Everything in Premium',
+      'Everything in Business Website',
       'Sage AI chat that captures leads',
       'Automations & follow-ups',
       'CRM dashboard + invoices',
-      'Priority support',
+      'Custom scope and support',
     ],
     featured: false,
   },
@@ -65,11 +63,11 @@ export default function Pricing() {
         >
           <p className="text-xs font-semibold uppercase tracking-widest text-[#c9a84c] mb-3">Pricing</p>
           <h2 className="text-4xl sm:text-5xl font-black text-white leading-tight mb-4">
-            Simple pricing,{' '}
-            <span className="gold-text">no surprises.</span>
+            A clear starting point.{' '}
+            <span className="gold-text">A quote built around you.</span>
           </h2>
           <p className="text-gray-400 text-lg max-w-xl mx-auto">
-            Every project is custom-built. Book a call and I&apos;ll give you an exact quote — no surprises, no pressure.
+            Start with a proven package, then add only what your business actually needs. Every project begins with a 50% deposit.
           </p>
         </motion.div>
 
@@ -96,6 +94,7 @@ export default function Pricing() {
               <div className="mt-3 mb-1 flex items-baseline gap-1">
                 <span className="text-2xl font-black gold-text">{tier.price}</span>
               </div>
+              <span className="mb-3 text-[11px] uppercase tracking-[0.16em] text-gray-600">{tier.suffix}</span>
               <p className="text-sm text-gray-400 leading-relaxed mb-6">{tier.blurb}</p>
 
               <ul className="space-y-3 mb-8 flex-1">
@@ -123,13 +122,13 @@ export default function Pricing() {
           ))}
         </div>
 
-        <p className="text-center text-sm text-gray-600 mt-8">
-          Not sure what you need?{' '}
-          <a href="#contact" className="text-[#c9a84c] underline underline-offset-2 hover:text-[#f5d485]">
-            Tell us about your project
-          </a>{' '}
-          and we&apos;ll recommend the right fit.
-        </p>
+        <div className="mx-auto mt-8 grid max-w-5xl gap-4 rounded-2xl border border-white/10 bg-black/30 p-5 text-sm text-gray-400 sm:grid-cols-2 lg:grid-cols-4">
+          <p><strong className="block text-white">50% to begin</strong>The remaining 50% is due before launch or final delivery.</p>
+          <p><strong className="block text-white">Care from $30/mo</strong>Monitoring, updates, and up to 30 minutes of small edits.</p>
+          <p><strong className="block text-white">Domain setup $50</strong>Optional configuration; registration and renewal stay in your name at cost.</p>
+          <p><strong className="block text-white">Extra work $50/hr</strong>For requests beyond the written scope or included care allowance.</p>
+        </div>
+        <p className="mt-6 text-center text-xs leading-relaxed text-gray-600">Prices are starting estimates, not binding offers. Larger builds, stores, custom apps, usage-based AI, premium software, email, and hosting upgrades are quoted separately. You own client-specific accounts and subscriptions; Seliem.dev covers its own internal development tools.</p>
       </div>
     </section>
   )

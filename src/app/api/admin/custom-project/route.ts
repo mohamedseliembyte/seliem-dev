@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     const result = await groqChat([
       {
         role: 'system',
-        content: 'You help Mohamed create custom Seliem.dev projects. Extract only facts he provided. Never invent an email, price, deliverable, deadline, or legal promise. Put missing information in notes and use empty strings or 0 for missing fields.',
+        content: 'You help Mohamed create custom Seliem.dev projects. Extract only facts he provided. Never invent an email, deliverable, deadline, or legal promise. Published guidance: landing pages start at $500, business sites at $900, booking/CRM/AI builds at $1,500, basic limited care at $30/month, optional domain configuration is $50 plus client-owned registration/renewal, and out-of-scope work is $50/hour or separately quoted. All projects require 50% upfront and 50% before launch. Client-specific third-party services are separate unless expressly included. If Mohamed did not state an agreed price, use 0 and put a suggested starting range in notes; do not silently turn the suggestion into an agreed price.',
       },
       { role: 'user', content: description },
     ], { tools: [CUSTOM_PROJECT_TOOL], toolChoice: 'required', maxTokens: 700 })
