@@ -606,7 +606,7 @@ export default function AdminPage() {
   return (
     <div className="hero-grid" style={s.page}>
       {/* Header */}
-      <header style={s.header}>
+      <header className="admin-main-header" style={s.header}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Image src="/logo.png" alt="Seliem.dev" width={32} height={32} style={{ borderRadius: 8, boxShadow: '0 0 0 1px rgba(201,168,76,0.3)' }} />
           <h1 className="gold-text" style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Admin</h1>
@@ -624,7 +624,7 @@ export default function AdminPage() {
       </header>
 
       {/* Stats bar */}
-      <div style={s.statsBar}>
+      <div className="admin-status-tabs" style={s.statsBar}>
         {['all', 'unread', ...STATUSES].map((st) => {
           const count = st === 'all' ? leads.length : st === 'unread' ? unreadCount : leads.filter((l) => l.status === st).length
           return (
@@ -643,7 +643,7 @@ export default function AdminPage() {
       </div>
 
       {/* Filter + export toolbar */}
-      <div style={{ display: 'flex', gap: 8, padding: '10px 24px', alignItems: 'center', flexWrap: 'wrap', borderBottom: '1px solid #1c1c1c' }}>
+      <div className="admin-filter-toolbar" style={{ display: 'flex', gap: 8, padding: '10px 24px', alignItems: 'center', flexWrap: 'wrap', borderBottom: '1px solid #1c1c1c' }}>
         <span style={{ color: '#777', fontSize: 12, marginRight: 2 }}>Received:</span>
         {([['1h', '1 hour'], ['24h', '24 hours'], ['7d', '7 days'], ['30d', '30 days'], ['all', 'All time'], ['custom', 'Custom']] as const).map(([key, label]) => (
           <button key={key} onClick={() => { setDatePreset(key); setRangeNow(Date.now()) }} style={{ ...s.rangeBtn, ...(datePreset === key ? s.rangeBtnActive : {}) }}>{label}</button>
@@ -659,7 +659,7 @@ export default function AdminPage() {
       </div>
 
       {/* Origin filter: forms vs chat-originated leads */}
-      <div style={{ display: 'flex', gap: 8, padding: '10px 24px', alignItems: 'center', flexWrap: 'wrap', borderBottom: '1px solid #1c1c1c' }}>
+      <div className="admin-filter-toolbar" style={{ display: 'flex', gap: 8, padding: '10px 24px', alignItems: 'center', flexWrap: 'wrap', borderBottom: '1px solid #1c1c1c' }}>
         <span style={{ color: '#777', fontSize: 12, marginRight: 4 }}>Origin:</span>
         {([['all', 'All'], ['forms', '📝 Forms'], ['chat', '💬 Chat']] as const).map(([key, label]) => {
           const count = key === 'all' ? leads.length : key === 'forms' ? leads.filter(isFormLead).length : leads.filter((l) => !isFormLead(l)).length
@@ -678,7 +678,7 @@ export default function AdminPage() {
 
       {/* Bulk action bar */}
       {selectedIds.size > 0 && (
-        <div style={{ display: 'flex', gap: 8, padding: '10px 24px', alignItems: 'center', flexWrap: 'wrap', background: '#15150c', borderBottom: '1px solid #2a2a14' }}>
+        <div className="admin-filter-toolbar" style={{ display: 'flex', gap: 8, padding: '10px 24px', alignItems: 'center', flexWrap: 'wrap', background: '#15150c', borderBottom: '1px solid #2a2a14' }}>
           <span style={{ color: GOLD, fontSize: 13 }}>{selectedIds.size} selected — set status:</span>
           {STATUSES.map((st) => (
             <button key={st} onClick={() => bulkSetStatus(st)} disabled={saving} style={{ ...s.smallBadge, background: STATUS_COLORS[st].bg, color: STATUS_COLORS[st].text, border: '1px solid #333', cursor: 'pointer', padding: '4px 10px' }}>{st}</button>
@@ -700,12 +700,12 @@ export default function AdminPage() {
       )}
 
       {/* Lead list */}
-      <div style={s.list}>
+      <div className="admin-lead-list" style={s.list}>
         {filtered.map((lead) => {
           const sc = STATUS_COLORS[lead.status] ?? STATUS_COLORS.new
           const convos = getLeadConversations(lead.id)
           return (
-            <div key={lead.id} style={{ display: 'flex', alignItems: 'stretch', gap: 8 }}>
+            <div className="admin-lead-wrapper" key={lead.id} style={{ display: 'flex', alignItems: 'stretch', gap: 8 }}>
             <input
               type="checkbox"
               checked={selectedIds.has(lead.id)}
@@ -713,14 +713,14 @@ export default function AdminPage() {
               title="Select for bulk action"
               style={{ marginTop: 18, cursor: 'pointer' }}
             />
-            <button onClick={() => { markRead(lead); setSelected(lead); setTab(getLeadConversations(lead.id).length > 0 ? 'chat' : 'details') }} className="card-lift" style={{ ...s.row, flex: 1, border: isUnread(lead) ? '1px solid rgba(201,168,76,0.35)' : (s.row.border as string) }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <button onClick={() => { markRead(lead); setSelected(lead); setTab(getLeadConversations(lead.id).length > 0 ? 'chat' : 'details') }} className="card-lift admin-lead-card" style={{ ...s.row, flex: 1, border: isUnread(lead) ? '1px solid rgba(201,168,76,0.35)' : (s.row.border as string) }}>
+              <div className="admin-lead-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 600, color: '#eee' }}>
                   {isUnread(lead) && <span title="Unread" style={{ width: 8, height: 8, borderRadius: 999, background: GOLD, display: 'inline-block', marginRight: 8, boxShadow: '0 0 6px rgba(201,168,76,0.6)' }} />}
                   {lead.customer_no && <span style={{ color: '#666', fontWeight: 400, fontSize: 12, marginRight: 6 }}>#{lead.customer_no}</span>}
                   {lead.name}
                 </span>
-                <div style={{ display: 'flex', gap: 6 }}>
+                <div className="admin-lead-badges" style={{ display: 'flex', gap: 6 }}>
                   {(lead.duplicate_count ?? 0) > 0 && <span style={{ ...s.smallBadge, background: '#2a1a1a', color: '#e88' }} title={`${lead.duplicate_count} repeat inquir${(lead.duplicate_count ?? 0) > 1 ? 'ies' : 'y'} merged`}>⚠ possible duplicate</span>}
                   {convos.length > 0 && <span style={{ ...s.smallBadge, background: '#1a1a2a', color: '#88f' }}>💬 Chat</span>}
                   <span style={{ ...s.smallBadge, background: lead.type === 'support' ? '#1c2a3a' : '#2a2414', color: lead.type === 'support' ? '#7ab' : GOLD }}>{lead.type}</span>
@@ -744,7 +744,7 @@ export default function AdminPage() {
       {/* ── AI custom-project drawer ─────────────────────────────────────── */}
       {showCustomProject && (
         <div style={s.overlay} onClick={() => setShowCustomProject(false)}>
-          <div style={s.drawer} onClick={(e) => e.stopPropagation()}>
+          <div className="admin-drawer" style={s.drawer} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <h2 className="gold-text" style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>＋ New custom project</h2>
               <button onClick={() => setShowCustomProject(false)} style={s.closeBtn}>✕</button>
@@ -760,7 +760,7 @@ export default function AdminPage() {
               </>
             ) : (
               <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div className="admin-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   <input value={customDraft.client_name} onChange={(e) => setCustomDraft({ ...customDraft, client_name: e.target.value })} placeholder="Client name" style={s.customInput} />
                   <input value={customDraft.client_email} onChange={(e) => setCustomDraft({ ...customDraft, client_email: e.target.value })} placeholder="Client email" type="email" style={s.customInput} />
                   <input value={customDraft.phone} onChange={(e) => setCustomDraft({ ...customDraft, phone: e.target.value })} placeholder="Phone (optional)" style={s.customInput} />
@@ -785,7 +785,7 @@ export default function AdminPage() {
       {/* ── Ask Sage drawer (admin AI assistant) ───────────────────────────── */}
       {showAssistant && (
         <div style={s.overlay} onClick={() => setShowAssistant(false)}>
-          <div style={s.drawer} onClick={(e) => e.stopPropagation()}>
+          <div className="admin-drawer" style={s.drawer} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <h2 className="gold-text" style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>🤖 Ask Sage</h2>
               <button onClick={() => setShowAssistant(false)} style={s.closeBtn}>✕</button>
@@ -857,7 +857,7 @@ export default function AdminPage() {
       {/* ── Tasks drawer ───────────────────────────────────────────────────── */}
       {showTasks && (
         <div style={s.overlay} onClick={() => setShowTasks(false)}>
-          <div style={s.drawer} onClick={(e) => e.stopPropagation()}>
+          <div className="admin-drawer" style={s.drawer} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h2 className="gold-text" style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>📋 Tasks</h2>
               <button onClick={() => setShowTasks(false)} style={s.closeBtn}>✕</button>
@@ -906,7 +906,7 @@ export default function AdminPage() {
       {/* ── Detail drawer ──────────────────────────────────────────────────── */}
       {selected && (
         <div style={s.overlay} onClick={() => setSelected(null)}>
-          <div style={s.drawer} onClick={(e) => e.stopPropagation()}>
+          <div className="admin-drawer" style={s.drawer} onClick={(e) => e.stopPropagation()}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div>
