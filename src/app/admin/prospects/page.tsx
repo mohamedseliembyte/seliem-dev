@@ -1,81 +1,90 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { getSupabaseBrowser } from '@/lib/supabase-client'
 import { exchangeGoogleToken, googlePopupSignIn } from '@/lib/google-auth'
 
-type Prospect = { id: string; priority: string | null; business: string; niche: string | null; city: string | null; state: string | null; phone: string | null; address: string | null; website: string | null; maps_url: string | null; sheet_status: string | null; status: string | null }
-type Payload = { prospects: Prospect[]; total: number; page: number; pageSize: number; integration?: { account_email: string; updated_at: string } | null; sync?: { status: string; row_count: number; completed_at?: string } | null }
+type Prospect = { id: string; priority: string | null; business: string; niche: string | null; city: string | null; state: string | null; phone: string | null; address: string | null; website: string | null; maps_url: string | null; status: string | null }
+type Meta = { total: number; pageSize: number; integration?: { account_email: string } | null; sync?: { status: string; row_count: number; completed_at?: string } | null }
+type Filters = { priority: string; niche: string; state: string; status: string }
+const emptyFilters: Filters = { priority: '', niche: '', state: '', status: '' }
 
 export default function ProspectsPage() {
-  const [token, setToken] = useState(''), [data, setData] = useState<Payload | null>(null)
-  const [search, setSearch] = useState(''), [query, setQuery] = useState(''), [page, setPage] = useState(1)
+  const [token, setToken] = useState(''), [prospects, setProspects] = useState<Prospect[]>([]), [meta, setMeta] = useState<Meta | null>(null)
+  const [search, setSearch] = useState(''), [query, setQuery] = useState(''), [filters, setFilters] = useState<Filters>(emptyFilters), [appliedFilters, setAppliedFilters] = useState<Filters>(emptyFilters)
+  const [page, setPage] = useState(1), [view, setView] = useState<'list' | 'grid'>('list')
   const [loading, setLoading] = useState(true), [working, setWorking] = useState(''), [error, setError] = useState('')
+  const [showAi, setShowAi] = useState(false), [aiQuestion, setAiQuestion] = useState(''), [aiAnswer, setAiAnswer] = useState(''), [aiBusy, setAiBusy] = useState(false)
+  const sentinel = useRef<HTMLDivElement>(null)
 
-  const load = useCallback(async (accessToken: string, currentPage = page, q = query) => {
+  const load = useCallback(async (accessToken: string, currentPage: number, append: boolean, currentQuery: string, currentFilters: Filters) => {
     setLoading(true); setError('')
-    const params = new URLSearchParams({ page: String(currentPage), search: q })
+    const params = new URLSearchParams({ page: String(currentPage), search: currentQuery })
+    Object.entries(currentFilters).forEach(([key, value]) => { if (value) params.set(key, value) })
     const response = await fetch(`/api/admin/prospects?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } })
     const payload = await response.json()
-    if (!response.ok) setError(payload.error || 'Could not load prospects.'); else setData(payload)
+    if (!response.ok) setError(payload.error || 'Could not load prospects.')
+    else { setProspects((rows) => append ? [...rows, ...payload.prospects] : payload.prospects); setMeta(payload) }
     setLoading(false)
-  }, [page, query])
+  }, [])
 
   useEffect(() => {
     const supabase = getSupabaseBrowser()
-    supabase.auth.getSession().then(({ data: sessionData }) => {
-      const accessToken = sessionData.session?.access_token || ''
-      setToken(accessToken); if (accessToken) load(accessToken, 1, ''); else setLoading(false)
-    })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    supabase.auth.getSession().then(({ data }) => { const value = data.session?.access_token || ''; setToken(value); if (value) load(value, 1, false, '', emptyFilters); else setLoading(false) })
+  }, [load])
+
+  useEffect(() => {
+    const node = sentinel.current
+    if (!node || !token || loading || prospects.length >= (meta?.total || 0)) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return
+      const next = page + 1; setPage(next); load(token, next, true, query, appliedFilters)
+    }, { rootMargin: '300px' })
+    observer.observe(node); return () => observer.disconnect()
+  }, [token, loading, prospects.length, meta?.total, page, query, appliedFilters, load])
 
   async function signIn() {
-    setError('')
-    try {
-      const google = await googlePopupSignIn(), supabase = getSupabaseBrowser()
-      const { data: authData, error: authError } = await exchangeGoogleToken(supabase, google.idToken, google.nonce)
-      if (authError || !authData.session) throw authError || new Error('Sign-in failed')
-      setToken(authData.session.access_token); await load(authData.session.access_token, 1, '')
-    } catch { setError('Admin sign-in did not complete.') }
+    try { const google = await googlePopupSignIn(), supabase = getSupabaseBrowser(); const { data, error: authError } = await exchangeGoogleToken(supabase, google.idToken, google.nonce); if (authError || !data.session) throw authError; setToken(data.session.access_token); await load(data.session.access_token, 1, false, '', emptyFilters) }
+    catch { setError('Admin sign-in did not complete.') }
+  }
+  async function connect() { setWorking('Connecting…'); const response = await fetch('/api/admin/google-sheets/connect', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }); const payload = await response.json(); if (response.ok) window.location.href = payload.url; else { setError(payload.error); setWorking('') } }
+  async function sync() { setWorking('Syncing…'); const response = await fetch('/api/admin/prospects/sync', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }); const payload = await response.json(); setWorking(''); if (!response.ok) setError(payload.error); else { setPage(1); await load(token, 1, false, query, appliedFilters) } }
+  function applyFilters() { setQuery(search.trim()); setAppliedFilters(filters); setPage(1); load(token, 1, false, search.trim(), filters) }
+  function clearFilters() { setSearch(''); setQuery(''); setFilters(emptyFilters); setAppliedFilters(emptyFilters); setPage(1); load(token, 1, false, '', emptyFilters) }
+  async function updateStatus(id: string, status: string) { await fetch('/api/admin/prospects', { method: 'PATCH', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) }); setProspects((rows) => rows.map((row) => row.id === id ? { ...row, status } : row)) }
+  async function askAi() {
+    if (!aiQuestion.trim() || aiBusy) return
+    setAiBusy(true); setAiAnswer('')
+    const response = await fetch('/api/admin/prospects/ask', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ question: aiQuestion.trim(), search: query, filters: appliedFilters }) })
+    const payload = await response.json(); setAiAnswer(response.ok ? payload.answer : payload.error || 'Sage could not answer.'); setAiBusy(false)
   }
 
-  async function connect() {
-    setWorking('Connecting…')
-    const response = await fetch('/api/admin/google-sheets/connect', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-    const payload = await response.json(); if (response.ok) window.location.href = payload.url; else { setError(payload.error); setWorking('') }
-  }
-
-  async function sync() {
-    setWorking('Importing about 29,000 businesses…'); setError('')
-    const response = await fetch('/api/admin/prospects/sync', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-    const payload = await response.json(); setWorking('')
-    if (!response.ok) setError(payload.error || 'Sync failed.'); else await load(token, 1, query)
-  }
-
-  async function updateStatus(id: string, status: string) {
-    await fetch('/api/admin/prospects', { method: 'PATCH', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) })
-    setData((current) => current ? { ...current, prospects: current.prospects.map((p) => p.id === id ? { ...p, status } : p) } : current)
-  }
-
-  if (!token && !loading) return <main style={styles.center}><div style={styles.login}><div style={styles.eyebrow}>SELIEM.DEV</div><h1>Prospect intelligence</h1><p style={styles.muted}>Sign in with the approved admin account.</p><button style={styles.goldButton} onClick={signIn}>Continue with Google</button>{error && <p style={styles.error}>{error}</p>}</div></main>
-
-  const totalPages = Math.max(1, Math.ceil((data?.total || 0) / (data?.pageSize || 50)))
-  return <main className="prospects-page" style={styles.page}>
-    <header style={styles.header}><div><Link href="/admin" style={styles.back}>← Admin</Link><h1 style={styles.title}>Prospect intelligence</h1><p style={styles.muted}>{(data?.total || 0).toLocaleString()} businesses ready for outreach</p></div><div style={styles.actions}>{data?.integration ? <button disabled={!!working} onClick={sync} style={styles.goldButton}>{working || 'Sync Google Sheet'}</button> : <button disabled={!!working} onClick={connect} style={styles.goldButton}>{working || 'Connect Google Sheets'}</button>}</div></header>
-    <section style={styles.stats}>
-      <div style={styles.card}><span style={styles.label}>TOTAL PROSPECTS</span><strong style={styles.big}>{(data?.total || 0).toLocaleString()}</strong></div>
-      <div style={styles.card}><span style={styles.label}>GOOGLE ACCOUNT</span><strong style={styles.value}>{data?.integration?.account_email || 'Not connected'}</strong></div>
-      <div style={styles.card}><span style={styles.label}>LAST IMPORT</span><strong style={styles.value}>{data?.sync?.completed_at ? new Date(data.sync.completed_at).toLocaleString() : 'Never'}</strong>{data?.sync?.status === 'completed' && <span style={styles.muted}>{data.sync.row_count.toLocaleString()} rows imported</span>}</div>
+  if (!token && !loading) return <main style={s.center}><div style={s.login}><div style={s.eyebrow}>SELIEM.DEV</div><h1>Prospect intelligence</h1><p style={s.muted}>Sign in with the approved admin account.</p><button style={s.primary} onClick={signIn}>Continue with Google</button>{error && <p style={s.error}>{error}</p>}</div></main>
+  const hasFilters = !!(query || Object.values(appliedFilters).some(Boolean))
+  return <main className="prospects-page" style={s.page}>
+    <header style={s.header}><div><Link href="/admin" style={s.back}>← Admin</Link><h1 style={s.title}>Prospect intelligence</h1><p style={s.muted}>{(meta?.total || 0).toLocaleString()} matching businesses</p></div><div style={s.actions}><button onClick={() => setShowAi(true)} style={s.secondary}>✦ Ask AI</button>{meta?.integration ? <button disabled={!!working} onClick={sync} style={s.primary}>{working || 'Sync Sheet'}</button> : <button onClick={connect} style={s.primary}>Connect Google Sheets</button>}</div></header>
+    <section style={s.stats}><div style={s.card}><span style={s.label}>MATCHING</span><strong style={s.big}>{(meta?.total || 0).toLocaleString()}</strong></div><div style={s.card}><span style={s.label}>LOADED</span><strong style={s.value}>{prospects.length.toLocaleString()} in this list</strong></div><div style={s.card}><span style={s.label}>LAST SYNC</span><strong style={s.value}>{meta?.sync?.completed_at ? new Date(meta.sync.completed_at).toLocaleString() : 'Never'}</strong><span style={s.muted}>{meta?.sync?.row_count?.toLocaleString() || 0} rows imported</span></div></section>
+    <section className="prospect-toolbar" style={s.toolbar}>
+      <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search business, niche, city, or phone…" style={{ ...s.input, flex: '2 1 280px' }} onKeyDown={(e) => { if (e.key === 'Enter') applyFilters() }} />
+      <select value={filters.priority} onChange={(e) => setFilters({ ...filters, priority: e.target.value })} style={s.input}><option value="">All tiers</option><option>1 - HOT (no site)</option><option>2 - Weak site</option><option>3 - Has real site</option></select>
+      <input value={filters.niche} onChange={(e) => setFilters({ ...filters, niche: e.target.value })} placeholder="Niche" style={s.input}/><input value={filters.state} onChange={(e) => setFilters({ ...filters, state: e.target.value.toUpperCase() })} placeholder="State" maxLength={30} style={{ ...s.input, maxWidth: 110 }}/>
+      <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })} style={s.input}><option value="">All statuses</option><option>Researching</option><option>Contacted</option><option>Interested</option><option>Follow up</option><option>Closed</option><option>Not a fit</option></select>
+      <button onClick={applyFilters} style={s.secondary}>Apply</button>{hasFilters && <button onClick={clearFilters} style={s.ghost}>Clear</button>}
+      <div style={s.toggle}><button aria-label="List view" onClick={() => setView('list')} style={view === 'list' ? s.toggleActive : s.toggleButton}>☰</button><button aria-label="Grid view" onClick={() => setView('grid')} style={view === 'grid' ? s.toggleActive : s.toggleButton}>▦</button></div>
     </section>
-    <form style={styles.searchbar} onSubmit={(e) => { e.preventDefault(); setQuery(search); setPage(1); load(token, 1, search) }}><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search business, niche, city, or phone…" style={styles.input}/><button style={styles.searchButton}>Search</button></form>
-    {error && <div style={styles.errorBox}>{error}</div>}
-    <section style={styles.tableWrap}><table style={styles.table}><thead><tr><th>Priority</th><th>Business</th><th>Niche</th><th>Location</th><th>Contact</th><th>Status</th><th></th></tr></thead><tbody>{loading ? <tr><td colSpan={7} style={styles.empty}>Loading prospects…</td></tr> : data?.prospects.map((p) => <tr key={p.id}><td><span style={priorityStyle(p.priority)}>{p.priority || '—'}</span></td><td><strong>{p.business}</strong><small style={styles.address}>{p.address}</small></td><td>{p.niche || '—'}</td><td>{[p.city, p.state].filter(Boolean).join(', ') || '—'}</td><td>{p.phone ? <a style={styles.link} href={`tel:${p.phone}`}>{p.phone}</a> : '—'}{p.website && <a style={styles.smallLink} href={p.website.startsWith('http') ? p.website : `https://${p.website}`} target="_blank">Website ↗</a>}</td><td><select value={p.status || ''} onChange={(e) => updateStatus(p.id, e.target.value)} style={styles.select}><option value="">Uncontacted</option><option>Researching</option><option>Contacted</option><option>Interested</option><option>Follow up</option><option>Closed</option><option>Not a fit</option></select></td><td>{p.maps_url && <a style={styles.mapLink} href={p.maps_url} target="_blank">Map ↗</a>}</td></tr>)}</tbody></table></section>
-    <footer style={styles.pagination}><button disabled={page <= 1} style={styles.pageButton} onClick={() => { const n = page - 1; setPage(n); load(token, n) }}>Previous</button><span>Page {page} of {totalPages}</span><button disabled={page >= totalPages} style={styles.pageButton} onClick={() => { const n = page + 1; setPage(n); load(token, n) }}>Next</button></footer>
+    {error && <div style={s.errorBox}>{error}</div>}
+    <section style={view === 'grid' ? s.grid : s.list}>{prospects.map((p) => <ProspectItem key={p.id} prospect={p} view={view} onStatus={updateStatus}/>)}</section>
+    <div ref={sentinel} style={s.sentinel}>{loading ? 'Loading more businesses…' : prospects.length < (meta?.total || 0) ? 'Scroll for more' : prospects.length ? `All ${prospects.length.toLocaleString()} matching businesses loaded` : 'No businesses match these filters.'}</div>
+    {showAi && <div style={s.overlay} onClick={() => setShowAi(false)}><aside style={s.drawer} onClick={(e) => e.stopPropagation()}><div style={s.drawerHead}><div><span style={s.eyebrow}>PROSPECT COPILOT</span><h2 style={{ margin: '6px 0' }}>Ask Sage</h2></div><button onClick={() => setShowAi(false)} style={s.ghost}>✕</button></div><p style={s.muted}>Sage can analyze the active filters, suggest who to contact first, create an outreach angle, or help plan a niche campaign.</p><div style={s.prompts}>{['Who should I contact first?', 'Give me an outreach script', 'Which niche looks strongest?', 'Plan my next 20 calls'].map((prompt) => <button key={prompt} onClick={() => setAiQuestion(prompt)} style={s.prompt}>{prompt}</button>)}</div><textarea value={aiQuestion} onChange={(e) => setAiQuestion(e.target.value)} maxLength={1000} rows={5} placeholder="Ask about these prospects…" style={s.textarea}/><button onClick={askAi} disabled={aiBusy || !aiQuestion.trim()} style={{ ...s.primary, width: '100%' }}>{aiBusy ? 'Sage is analyzing…' : 'Ask Sage'}</button>{aiAnswer && <div style={s.answer}>{aiAnswer}</div>}</aside></div>}
   </main>
 }
 
-const priorityStyle = (priority: string | null): React.CSSProperties => ({ padding: '5px 9px', borderRadius: 99, fontSize: 11, whiteSpace: 'nowrap', color: priority?.includes('HOT') ? '#ffcd72' : '#aaa', background: priority?.includes('HOT') ? 'rgba(212,168,83,.14)' : '#202020', border: `1px solid ${priority?.includes('HOT') ? 'rgba(212,168,83,.3)' : '#303030'}` })
-const styles: Record<string, React.CSSProperties> = {
-  page: { minHeight: '100vh', background: '#090909', color: '#f5f2ea', padding: '0 28px 40px', fontFamily: 'Arial, sans-serif' }, center: { minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#090909', color: '#fff' }, login: { width: 380, padding: 36, border: '1px solid #242424', borderRadius: 18, background: '#111', textAlign: 'center' }, eyebrow: { color: '#d4a853', fontSize: 11, letterSpacing: 3 }, muted: { color: '#8c8c8c', margin: '6px 0 0', fontSize: 14 }, header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '28px 0 22px', position: 'sticky', top: 0, zIndex: 5, background: 'rgba(9,9,9,.94)', backdropFilter: 'blur(12px)' }, back: { color: '#888', textDecoration: 'none', fontSize: 13 }, title: { margin: '8px 0 0', fontSize: 28, letterSpacing: '-.6px' }, actions: { display: 'flex', gap: 10 }, goldButton: { marginTop: 18, background: '#d4a853', color: '#090909', border: 0, borderRadius: 9, padding: '11px 17px', fontWeight: 800, cursor: 'pointer' }, stats: { display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 12, marginBottom: 16 }, card: { background: '#111', border: '1px solid #222', borderRadius: 14, padding: 18, minHeight: 78, display: 'flex', flexDirection: 'column', gap: 9 }, label: { color: '#777', fontSize: 10, letterSpacing: 1.5 }, big: { color: '#d4a853', fontSize: 28 }, value: { fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis' }, searchbar: { display: 'flex', gap: 8, margin: '18px 0' }, input: { flex: 1, background: '#111', color: '#fff', border: '1px solid #292929', borderRadius: 10, padding: '13px 15px', outline: 'none' }, searchButton: { background: '#222', border: '1px solid #333', color: '#eee', borderRadius: 9, padding: '0 20px', cursor: 'pointer' }, tableWrap: { overflowX: 'auto', border: '1px solid #222', borderRadius: 14, background: '#101010' }, table: { width: '100%', borderCollapse: 'collapse', fontSize: 13 }, empty: { padding: 50, textAlign: 'center', color: '#777' }, address: { display: 'block', color: '#666', marginTop: 5, maxWidth: 260 }, link: { color: '#ddd', textDecoration: 'none' }, smallLink: { display: 'block', color: '#d4a853', marginTop: 5, fontSize: 11, textDecoration: 'none' }, mapLink: { color: '#d4a853', textDecoration: 'none', whiteSpace: 'nowrap' }, select: { background: '#171717', color: '#ddd', border: '1px solid #303030', borderRadius: 7, padding: '7px' }, pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 18, marginTop: 20, color: '#888', fontSize: 13 }, pageButton: { background: '#171717', color: '#ddd', border: '1px solid #303030', padding: '8px 14px', borderRadius: 7 }, error: { color: '#ff8e8e' }, errorBox: { background: '#2a1111', color: '#ffaaaa', border: '1px solid #542020', padding: 12, borderRadius: 8, marginBottom: 12 },
+function ProspectItem({ prospect: p, view, onStatus }: { prospect: Prospect; view: 'list' | 'grid'; onStatus: (id: string, status: string) => void }) {
+  return <article className="prospect-item" style={{ ...(view === 'grid' ? s.prospectCard : s.prospectRow), borderLeft: `3px solid ${tierColor(p.priority).solid}` }}><div style={s.prospectMain}><span style={{ ...s.tier, color: tierColor(p.priority).text, background: tierColor(p.priority).bg, borderColor: tierColor(p.priority).border }}>{p.priority || 'Unranked'}</span><strong style={s.business}>{p.business}</strong><span style={s.meta}>{p.niche || 'Unknown niche'} · {[p.city, p.state].filter(Boolean).join(', ') || 'Location unknown'}</span></div><div style={s.contact}>{p.phone && <a href={`tel:${p.phone}`} style={s.link}>{p.phone}</a>}{p.website && <a href={p.website.startsWith('http') ? p.website : `https://${p.website}`} target="_blank" style={s.smallLink}>Website ↗</a>}</div><select aria-label={`Status for ${p.business}`} value={p.status || ''} onChange={(e) => onStatus(p.id, e.target.value)} style={s.select}><option value="">Uncontacted</option><option>Researching</option><option>Contacted</option><option>Interested</option><option>Follow up</option><option>Closed</option><option>Not a fit</option></select>{p.maps_url && <a href={p.maps_url} target="_blank" style={s.mapLink}>Map ↗</a>}</article>
+}
+
+function tierColor(priority: string | null) { if (priority?.startsWith('1')) return { solid: '#f59e0b', text: '#ffd27a', bg: 'rgba(245,158,11,.12)', border: 'rgba(245,158,11,.35)' }; if (priority?.startsWith('2')) return { solid: '#60a5fa', text: '#9bc7ff', bg: 'rgba(96,165,250,.11)', border: 'rgba(96,165,250,.32)' }; return { solid: '#4ade80', text: '#8ee6a9', bg: 'rgba(74,222,128,.09)', border: 'rgba(74,222,128,.25)' } }
+const s: Record<string, React.CSSProperties> = {
+  page: { minHeight: '100vh', background: '#090909', color: '#f5f2ea', padding: '0 28px 48px' }, center: { minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#090909', color: '#fff' }, login: { width: 380, padding: 36, border: '1px solid #242424', borderRadius: 14, background: '#111', textAlign: 'center' }, eyebrow: { color: '#d4a853', fontSize: 10, letterSpacing: 2 }, muted: { color: '#929292', margin: '6px 0 0', fontSize: 14 }, header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '26px 0 20px', position: 'sticky', top: 0, zIndex: 5, background: 'rgba(9,9,9,.95)', backdropFilter: 'blur(12px)' }, back: { color: '#999', textDecoration: 'none', fontSize: 13 }, title: { margin: '8px 0 0', fontSize: 28 }, actions: { display: 'flex', gap: 9, alignItems: 'center' }, primary: { background: '#d4a853', color: '#090909', border: 0, borderRadius: 10, padding: '11px 16px', fontWeight: 800, cursor: 'pointer' }, secondary: { background: '#202020', color: '#eee', border: '1px solid #333', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', whiteSpace: 'nowrap' }, ghost: { background: 'transparent', color: '#999', border: '1px solid #292929', borderRadius: 9, padding: '9px 12px', cursor: 'pointer' }, stats: { display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 12, marginBottom: 14 }, card: { background: '#111', border: '1px solid #222', borderRadius: 12, padding: 17, display: 'flex', flexDirection: 'column', gap: 8 }, label: { color: '#777', fontSize: 10, letterSpacing: 1.4 }, big: { color: '#d4a853', fontSize: 27 }, value: { fontSize: 14 }, toolbar: { display: 'flex', gap: 8, flexWrap: 'wrap', padding: 12, margin: '14px 0', background: '#101010', border: '1px solid #222', borderRadius: 12, position: 'sticky', top: 99, zIndex: 4 }, input: { background: '#171717', color: '#eee', border: '1px solid #303030', borderRadius: 9, padding: '10px 11px', minWidth: 120 }, toggle: { display: 'flex', border: '1px solid #303030', borderRadius: 9, overflow: 'hidden', marginLeft: 'auto' }, toggleButton: { background: '#111', color: '#777', border: 0, padding: '9px 12px', cursor: 'pointer' }, toggleActive: { background: '#d4a853', color: '#111', border: 0, padding: '9px 12px', cursor: 'pointer' }, list: { display: 'grid', gap: 7 }, grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(310px,1fr))', gap: 12 }, prospectRow: { display: 'grid', gridTemplateColumns: 'minmax(300px,2fr) minmax(140px,1fr) 145px 60px', gap: 14, alignItems: 'center', padding: '14px 16px', background: '#111', border: '1px solid #222', borderRadius: 10 }, prospectCard: { display: 'flex', flexDirection: 'column', gap: 14, padding: 17, background: '#111', border: '1px solid #252525', borderRadius: 12, minHeight: 190 }, prospectMain: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6 }, tier: { padding: '4px 8px', borderRadius: 99, border: '1px solid', fontSize: 10 }, business: { fontSize: 15, lineHeight: 1.3 }, meta: { color: '#8d8d8d', fontSize: 12 }, contact: { display: 'flex', flexDirection: 'column', gap: 5 }, link: { color: '#eee', textDecoration: 'none' }, smallLink: { color: '#d4a853', fontSize: 12, textDecoration: 'none' }, select: { background: '#181818', color: '#ddd', border: '1px solid #333', borderRadius: 8, padding: '8px' }, mapLink: { color: '#d4a853', textDecoration: 'none', fontSize: 12 }, sentinel: { textAlign: 'center', color: '#777', padding: 30, fontSize: 13 }, error: { color: '#ff9292' }, errorBox: { background: '#2a1111', color: '#ffaaaa', border: '1px solid #542020', padding: 12, borderRadius: 9, marginBottom: 12 }, overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.68)', zIndex: 20, display: 'flex', justifyContent: 'flex-end' }, drawer: { width: 'min(480px,100%)', height: '100%', background: '#101010', borderLeft: '1px solid #2b2b2b', padding: 24, overflowY: 'auto' }, drawerHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' }, prompts: { display: 'flex', flexWrap: 'wrap', gap: 7, margin: '20px 0 10px' }, prompt: { background: '#181818', color: '#bbb', border: '1px solid #303030', borderRadius: 99, padding: '7px 10px', cursor: 'pointer', fontSize: 12 }, textarea: { width: '100%', background: '#090909', color: '#eee', border: '1px solid #303030', borderRadius: 10, padding: 12, margin: '8px 0 10px', resize: 'vertical' }, answer: { whiteSpace: 'pre-wrap', lineHeight: 1.6, background: '#171717', border: '1px solid #292929', borderRadius: 10, padding: 15, marginTop: 15, color: '#ddd', fontSize: 14 },
 }
