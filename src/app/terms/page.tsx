@@ -52,9 +52,9 @@ export default function TermsPage() {
 
           <Section title="5. Payments">
             <p>
-              Payment terms (including any deposits, milestones, or recurring fees) are set out in your project
-              agreement. Unless otherwise stated, deposits are non-refundable once work has begun. Recurring services
-              (such as maintenance) continue until cancelled per the agreement.
+              Unless a written project agreement says otherwise, a 50% deposit is required before work begins and the
+              remaining 50% is due before launch, transfer, or final delivery. Deposits become non-refundable once work
+              has begun. Recurring services (such as maintenance) continue until cancelled per the agreement.
             </p>
           </Section>
 
@@ -68,9 +68,10 @@ export default function TermsPage() {
 
           <Section title="7. Third-Party Services">
             <p>
-              Our services may rely on third-party platforms (e.g. hosting, domains, email, analytics, payment
-              processors). Your use of those services may be subject to their own terms, and we are not responsible for
-              their availability or actions.
+              Seliem.dev pays for its internal development tools. Client-owned or client-specific services—such as
+              domains, professional email, premium software, hosting upgrades, payment processing, SMS, and usage-based
+              API or AI services—are the client&apos;s responsibility unless a written proposal expressly includes them.
+              Those services may have their own terms, price changes, and availability conditions.
             </p>
           </Section>
 
