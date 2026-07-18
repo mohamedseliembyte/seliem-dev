@@ -61,12 +61,12 @@ export default function ProspectsPage() {
   if (!token && !loading) return <main style={styles.center}><div style={styles.login}><div style={styles.eyebrow}>SELIEM.DEV</div><h1>Prospect intelligence</h1><p style={styles.muted}>Sign in with the approved admin account.</p><button style={styles.goldButton} onClick={signIn}>Continue with Google</button>{error && <p style={styles.error}>{error}</p>}</div></main>
 
   const totalPages = Math.max(1, Math.ceil((data?.total || 0) / (data?.pageSize || 50)))
-  return <main style={styles.page}>
+  return <main className="prospects-page" style={styles.page}>
     <header style={styles.header}><div><Link href="/admin" style={styles.back}>← Admin</Link><h1 style={styles.title}>Prospect intelligence</h1><p style={styles.muted}>{(data?.total || 0).toLocaleString()} businesses ready for outreach</p></div><div style={styles.actions}>{data?.integration ? <button disabled={!!working} onClick={sync} style={styles.goldButton}>{working || 'Sync Google Sheet'}</button> : <button disabled={!!working} onClick={connect} style={styles.goldButton}>{working || 'Connect Google Sheets'}</button>}</div></header>
     <section style={styles.stats}>
       <div style={styles.card}><span style={styles.label}>TOTAL PROSPECTS</span><strong style={styles.big}>{(data?.total || 0).toLocaleString()}</strong></div>
       <div style={styles.card}><span style={styles.label}>GOOGLE ACCOUNT</span><strong style={styles.value}>{data?.integration?.account_email || 'Not connected'}</strong></div>
-      <div style={styles.card}><span style={styles.label}>LAST IMPORT</span><strong style={styles.value}>{data?.sync?.completed_at ? new Date(data.sync.completed_at).toLocaleString() : 'Never'}</strong></div>
+      <div style={styles.card}><span style={styles.label}>LAST IMPORT</span><strong style={styles.value}>{data?.sync?.completed_at ? new Date(data.sync.completed_at).toLocaleString() : 'Never'}</strong>{data?.sync?.status === 'completed' && <span style={styles.muted}>{data.sync.row_count.toLocaleString()} rows imported</span>}</div>
     </section>
     <form style={styles.searchbar} onSubmit={(e) => { e.preventDefault(); setQuery(search); setPage(1); load(token, 1, search) }}><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search business, niche, city, or phone…" style={styles.input}/><button style={styles.searchButton}>Search</button></form>
     {error && <div style={styles.errorBox}>{error}</div>}

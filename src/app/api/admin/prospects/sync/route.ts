@@ -12,7 +12,11 @@ export async function POST(req: NextRequest) {
     const token = await googleAccessToken()
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/${encodeURIComponent(GOOGLE_SHEET_RANGE)}?majorDimension=ROWS`
     const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
-    if (!response.ok) throw new Error(`Google Sheets returned ${response.status}.`)
+    if (!response.ok) {
+      const googleError = await response.json().catch(() => null) as { error?: { message?: string; status?: string } } | null
+      const detail = googleError?.error?.message?.slice(0, 300)
+      throw new Error(detail || `Google Sheets returned ${response.status}.`)
+    }
     const payload = await response.json() as { values?: unknown }
     if (!Array.isArray(payload.values) || payload.values.length > 50_000) throw new Error('The spreadsheet response is invalid or too large.')
     const rows = payload.values.map((row) => {

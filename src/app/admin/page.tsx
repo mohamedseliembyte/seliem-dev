@@ -81,6 +81,7 @@ type Task = {
 }
 
 type EmailDraft = { id: string; to_email: string; to_name: string | null; subject: string; body: string }
+type DateRangePreset = '1h' | '24h' | '7d' | '30d' | 'all' | 'custom'
 
 type CustomProjectDraft = {
   client_name: string
@@ -145,6 +146,8 @@ export default function AdminPage() {
   const [saving, setSaving] = useState(false)
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [datePreset, setDatePreset] = useState<DateRangePreset>('all')
+  const [rangeNow, setRangeNow] = useState(() => Date.now())
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [lastVisitorAt, setLastVisitorAt] = useState<Record<string, string>>({})
   const [origin, setOrigin] = useState<'all' | 'forms' | 'chat'>('all')
@@ -518,8 +521,10 @@ export default function AdminPage() {
 
   const inRange = (iso: string) => {
     const t = new Date(iso).getTime()
-    if (dateFrom && t < new Date(dateFrom).getTime()) return false
-    if (dateTo && t > new Date(dateTo).getTime() + 86_400_000) return false // include the whole end day
+    const presetMs: Partial<Record<DateRangePreset, number>> = { '1h': 3_600_000, '24h': 86_400_000, '7d': 604_800_000, '30d': 2_592_000_000 }
+    if (datePreset !== 'all' && datePreset !== 'custom' && t < rangeNow - (presetMs[datePreset] ?? 0)) return false
+    if (datePreset === 'custom' && dateFrom && t < new Date(dateFrom).getTime()) return false
+    if (datePreset === 'custom' && dateTo && t > new Date(dateTo).getTime()) return false
     return true
   }
 
@@ -606,14 +611,14 @@ export default function AdminPage() {
           <Image src="/logo.png" alt="Seliem.dev" width={32} height={32} style={{ borderRadius: 8, boxShadow: '0 0 0 1px rgba(201,168,76,0.3)' }} />
           <h1 className="gold-text" style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Admin</h1>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div className="admin-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <a href="/admin/prospects" style={{ ...s.signOutBtn, textDecoration: 'none' }}>Prospect leads</a>
           <button onClick={() => { setShowCustomProject(true); setCustomError(null) }} style={{ ...s.signOutBtn, background: GOLD, color: '#000', borderColor: GOLD, fontWeight: 700 }}>＋ Custom project</button>
           <button onClick={() => setShowAssistant(true)} style={s.signOutBtn}>🤖 Ask Sage</button>
           <button onClick={() => setShowTasks(true)} style={s.signOutBtn}>
             📋 Tasks{openTasks > 0 ? ` (${openTasks})` : ''}
           </button>
-          <span style={{ color: '#888', fontSize: 13 }}>{session.user.email}</span>
+          <span className="admin-email" style={{ color: '#888', fontSize: 13 }}>{session.user.email}</span>
           <button onClick={signOut} style={s.signOutBtn}>Sign out</button>
         </div>
       </header>
@@ -638,12 +643,17 @@ export default function AdminPage() {
       </div>
 
       {/* Filter + export toolbar */}
-      <div style={{ display: 'flex', gap: 10, padding: '10px 24px', alignItems: 'center', flexWrap: 'wrap', borderBottom: '1px solid #1c1c1c' }}>
-        <span style={{ color: '#777', fontSize: 12 }}>Date range:</span>
-        <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} style={s.dateInput} />
-        <span style={{ color: '#555' }}>→</span>
-        <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} style={s.dateInput} />
-        {(dateFrom || dateTo) && <button onClick={() => { setDateFrom(''); setDateTo('') }} style={s.signOutBtn}>Clear</button>}
+      <div style={{ display: 'flex', gap: 8, padding: '10px 24px', alignItems: 'center', flexWrap: 'wrap', borderBottom: '1px solid #1c1c1c' }}>
+        <span style={{ color: '#777', fontSize: 12, marginRight: 2 }}>Received:</span>
+        {([['1h', '1 hour'], ['24h', '24 hours'], ['7d', '7 days'], ['30d', '30 days'], ['all', 'All time'], ['custom', 'Custom']] as const).map(([key, label]) => (
+          <button key={key} onClick={() => { setDatePreset(key); setRangeNow(Date.now()) }} style={{ ...s.rangeBtn, ...(datePreset === key ? s.rangeBtnActive : {}) }}>{label}</button>
+        ))}
+        {datePreset === 'custom' && <>
+          <input aria-label="Start date and time" type="datetime-local" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} max={dateTo || undefined} style={s.dateInput} />
+          <span style={{ color: '#555' }}>→</span>
+          <input aria-label="End date and time" type="datetime-local" value={dateTo} onChange={(e) => setDateTo(e.target.value)} min={dateFrom || undefined} style={s.dateInput} />
+          {(dateFrom || dateTo) && <button onClick={() => { setDateFrom(''); setDateTo('') }} style={s.signOutBtn}>Reset</button>}
+        </>}
         <span style={{ color: '#666', fontSize: 12 }}>{filtered.length} shown</span>
         <button onClick={exportCsv} disabled={filtered.length === 0} style={{ ...s.signOutBtn, marginLeft: 'auto', opacity: filtered.length === 0 ? 0.4 : 1 }}>⬇ Export CSV</button>
       </div>
@@ -1221,5 +1231,7 @@ const s = {
   notesInput: { width: '100%', marginTop: 4, padding: 12, background: '#0a0a0a', border: '1px solid #222', borderRadius: 12, color: '#ddd', fontSize: 13, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 } as React.CSSProperties,
   actionBtn: { background: '#1c1c1c', color: '#eee', border: '1px solid #333', borderRadius: 10, padding: '10px 16px', textDecoration: 'none', fontSize: 14, transition: 'all .15s' } as React.CSSProperties,
   dateInput: { background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, color: '#ddd', fontSize: 13, padding: '6px 10px', colorScheme: 'dark' } as React.CSSProperties,
+  rangeBtn: { background: '#111', color: '#999', border: '1px solid #252525', borderRadius: 999, padding: '6px 10px', fontSize: 12, cursor: 'pointer' } as React.CSSProperties,
+  rangeBtnActive: { background: 'rgba(201,168,76,0.14)', color: GOLD, borderColor: 'rgba(201,168,76,0.55)' } as React.CSSProperties,
   customInput: { width: '100%', padding: '10px 12px', background: '#0a0a0a', border: '1px solid #222', borderRadius: 10, color: '#eee', fontSize: 13 } as React.CSSProperties,
 }

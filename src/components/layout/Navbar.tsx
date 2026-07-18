@@ -86,14 +86,12 @@ export default function Navbar() {
               <Mail className="w-[18px] h-[18px]" />
             </a>
 
-            {/* Book a call — primary CTA */}
+            {/* One clear primary CTA */}
             <a
-              href="https://cal.com/seliem.dev"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="#contact"
               className="hidden md:inline-flex items-center rounded-full gold-gradient text-black px-4 py-1.5 text-sm font-semibold hover:opacity-90 transition-opacity"
             >
-              Book a call
+              Start a project
             </a>
 
             {/* Account */}
@@ -134,13 +132,11 @@ export default function Navbar() {
             </Link>
           ))}
           <a
-            href="https://cal.com/seliem.dev"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="#contact"
             onClick={closeMobile}
             className="block py-3 text-base font-semibold text-[#c9a84c] border-b border-white/5"
           >
-            Book a free call
+            Start a project
           </a>
           <Link
             href="/account"

@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { motion, useMotionValue, useTransform, useInView, animate } from 'framer-motion'
+import { useEffect, useState } from 'react'
+import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
 import { ArrowRight, ChevronDown, Sparkles } from 'lucide-react'
 import Image from 'next/image'
 import dynamic from 'next/dynamic'
@@ -81,26 +81,6 @@ function OrbitCard({ demo, startAngle }: { demo: Demo; startAngle: number }) {
       </div>
     </motion.div>
   )
-}
-
-// ─── Animated counter ─────────────────────────────────────────────────────────
-function Counter({ to, suffix = '' }: { to: number; suffix?: string }) {
-  const ref = useRef<HTMLSpanElement>(null)
-  const inView = useInView(ref, { once: true })
-
-  useEffect(() => {
-    if (!inView || !ref.current) return
-    const controls = animate(0, to, {
-      duration: 1.8,
-      ease: 'easeOut',
-      onUpdate: (v) => {
-        if (ref.current) ref.current.textContent = Math.round(v) + suffix
-      },
-    })
-    return controls.stop
-  }, [inView, to, suffix])
-
-  return <span ref={ref}>0{suffix}</span>
 }
 
 // ─── Framer variants ──────────────────────────────────────────────────────────
@@ -243,17 +223,17 @@ export default function Hero() {
               className="flex flex-col sm:flex-row gap-4 mb-10"
             >
               <a
-                href="#demos"
+                href="#contact"
                 className="group inline-flex items-center justify-center gap-2 px-7 py-4 rounded-lg text-base font-semibold gold-gradient text-black hover:shadow-xl hover:shadow-[#c9a84c]/25 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
               >
-                View Live Demos
+                Start a project
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
               </a>
               <a
-                href="#contact"
+                href="#demos"
                 className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-lg text-base font-semibold border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10 hover:border-[#c9a84c]/70 transition-all duration-200"
               >
-                Start Your Website
+                View our work
               </a>
             </motion.div>
 
@@ -264,21 +244,15 @@ export default function Hero() {
               For businesses, creators, professionals, and brands ready to look serious online.
             </motion.p>
 
-            {/* Animated stats */}
+            {/* Honest service commitments — no unsupported vanity metrics */}
             <motion.div
               custom={0.85} variants={fadeUp} initial="hidden" animate="visible"
               className="mt-12 pt-8 border-t border-white/5 grid grid-cols-3 gap-6 max-w-sm"
             >
-              {[
-                { value: 8, suffix: '+', label: 'Industries' },
-                { value: 48, suffix: 'h', label: 'Avg. Launch' },
-                { value: 100, suffix: '%', label: 'Custom Built' },
-              ].map((stat) => (
-                <div key={stat.label}>
-                  <div className="text-2xl font-black gold-text">
-                    <Counter to={stat.value} suffix={stat.suffix} />
-                  </div>
-                  <div className="text-xs text-gray-600 mt-1">{stat.label}</div>
+              {['Custom scope', 'Clear agreement', 'Direct support'].map((label) => (
+                <div key={label}>
+                  <div className="w-6 h-px bg-[#c9a84c] mb-3" />
+                  <div className="text-xs text-gray-400 leading-snug">{label}</div>
                 </div>
               ))}
             </motion.div>
