@@ -85,6 +85,7 @@ table tbody tr:hover { background: rgba(255,255,255,.018); }
   .prospect-detail-page > header select { width: 100%; min-height: 44px; }
   .prospect-detail-page > div:last-child { grid-template-columns: 1fr !important; }
   .prospect-detail-page > div:last-child > section:last-child > div:nth-of-type(2) { grid-template-columns: 1fr !important; }
+  .pitch-grid, .mind-map-branches { grid-template-columns: 1fr !important; }
 }
 
 @media (max-width: 430px) {
