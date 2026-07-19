@@ -79,6 +79,8 @@ table tbody tr:hover { background: rgba(255,255,255,.018); }
   .prospects-page table th, .prospects-page table td { padding: 12px 9px; }
   .prospect-toolbar { position: static !important; }
   .prospect-toolbar > * { min-height: 42px; }
+  .lead-map > div:first-child { flex-direction: column; }
+  .lead-map > div:last-child { grid-template-columns: 1fr !important; }
   .prospect-item { display: flex !important; flex-direction: column !important; align-items: stretch !important; }
   .prospect-detail-page { padding-left: 14px !important; padding-right: 14px !important; }
   .prospect-detail-page > header { flex-direction: column; align-items: flex-start !important; }

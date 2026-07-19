@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   if (rawSearch.length > 100) return NextResponse.json({ error: 'Search is too long.' }, { status: 400 })
   const search = rawSearch.replace(/[%_*,()'"\\]/g, ' ').replace(/\s+/g, ' ').trim()
   if (search) query = query.or(`business.ilike.%${search}%,niche.ilike.%${search}%,city.ilike.%${search}%,phone.ilike.%${search}%`)
-  for (const key of ['priority', 'niche', 'state', 'status'] as const) { const value = cleanFilter(p.get(key), 80); if (value) query = query.eq(key, value) }
+  for (const key of ['priority', 'niche', 'state', 'city', 'status'] as const) { const value = cleanFilter(p.get(key), 80); if (value) query = query.eq(key, value) }
   const { data, count, error } = await query.order('sheet_row').range((page - 1) * pageSize, page * pageSize - 1)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   const { data: integration } = await auth.supabase!.from('google_integrations').select('account_email,updated_at').eq('id', 'google_sheets').maybeSingle()

@@ -4,12 +4,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { getSupabaseBrowser } from '@/lib/supabase-client'
 import { exchangeGoogleToken, googlePopupSignIn } from '@/lib/google-auth'
+import { ProspectMap } from '@/components/admin/ProspectMap'
 
 type Prospect = { id: string; priority: string | null; business: string; niche: string | null; city: string | null; state: string | null; phone: string | null; address: string | null; website: string | null; maps_url: string | null; status: string | null }
 type Meta = { total: number; pageSize: number; integration?: { account_email: string } | null; sync?: { status: string; row_count: number; completed_at?: string } | null }
-type Filters = { priority: string; niche: string; state: string; status: string }
+type Filters = { priority: string; niche: string; state: string; city: string; status: string }
 type PlaceLead = { placeId: string; business: string; niche: string | null; city: string | null; state: string | null; phone: string | null; address: string | null; website: string | null; mapsUrl: string | null }
-const emptyFilters: Filters = { priority: '', niche: '', state: '', status: '' }
+const emptyFilters: Filters = { priority: '', niche: '', state: '', city: '', status: '' }
 
 export default function ProspectsPage() {
   const [token, setToken] = useState(''), [prospects, setProspects] = useState<Prospect[]>([]), [meta, setMeta] = useState<Meta | null>(null)
@@ -54,6 +55,7 @@ export default function ProspectsPage() {
   async function sync() { setWorking('Syncing…'); const response = await fetch('/api/admin/prospects/sync', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }); const payload = await response.json(); setWorking(''); if (!response.ok) setError(payload.error); else { setPage(1); await load(token, 1, false, query, appliedFilters) } }
   function applyFilters() { setQuery(search.trim()); setAppliedFilters(filters); setPage(1); load(token, 1, false, search.trim(), filters) }
   function clearFilters() { setSearch(''); setQuery(''); setFilters(emptyFilters); setAppliedFilters(emptyFilters); setPage(1); load(token, 1, false, '', emptyFilters) }
+  function selectLocation(state: string, city: string) { const next = { ...filters, state, city }; setFilters(next); setAppliedFilters(next); setPage(1); load(token, 1, false, query, next) }
   async function updateStatus(id: string, status: string) { await fetch('/api/admin/prospects', { method: 'PATCH', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) }); setProspects((rows) => rows.map((row) => row.id === id ? { ...row, status } : row)) }
   async function askAi() {
     if (!aiQuestion.trim() || aiBusy) return
@@ -71,10 +73,11 @@ export default function ProspectsPage() {
   return <main className="prospects-page" style={s.page}>
     <header style={s.header}><div><Link href="/admin" style={s.back}>← Admin</Link><h1 style={s.title}>Prospect intelligence</h1><p style={s.muted}>{(meta?.total || 0).toLocaleString()} matching businesses</p></div><div style={s.actions}><button onClick={openPlaces} style={s.secondary}>⌖ Find leads</button><button onClick={() => setShowAi(true)} style={s.secondary}>✦ Ask AI</button>{meta?.integration ? <button disabled={!!working} onClick={sync} style={s.primary}>{working || 'Sync Sheet'}</button> : <button onClick={connect} style={s.primary}>Connect Google Sheets</button>}</div></header>
     <section style={s.stats}><div style={s.card}><span style={s.label}>MATCHING</span><strong style={s.big}>{(meta?.total || 0).toLocaleString()}</strong></div><div style={s.card}><span style={s.label}>LOADED</span><strong style={s.value}>{prospects.length.toLocaleString()} in this list</strong></div><div style={s.card}><span style={s.label}>LAST SYNC</span><strong style={s.value}>{meta?.sync?.completed_at ? new Date(meta.sync.completed_at).toLocaleString() : 'Never'}</strong><span style={s.muted}>{meta?.sync?.row_count?.toLocaleString() || 0} rows imported</span></div></section>
+    <ProspectMap token={token} selectedState={appliedFilters.state} selectedCity={appliedFilters.city} onSelect={selectLocation}/>
     <section className="prospect-toolbar" style={s.toolbar}>
       <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search business, niche, city, or phone…" style={{ ...s.input, flex: '2 1 280px' }} onKeyDown={(e) => { if (e.key === 'Enter') applyFilters() }} />
       <select value={filters.priority} onChange={(e) => setFilters({ ...filters, priority: e.target.value })} style={s.input}><option value="">All tiers</option><option>1 - HOT (no site)</option><option>2 - Weak site</option><option>3 - Has real site</option></select>
-      <input value={filters.niche} onChange={(e) => setFilters({ ...filters, niche: e.target.value })} placeholder="Niche" style={s.input}/><input value={filters.state} onChange={(e) => setFilters({ ...filters, state: e.target.value.toUpperCase() })} placeholder="State" maxLength={30} style={{ ...s.input, maxWidth: 110 }}/>
+      <input value={filters.niche} onChange={(e) => setFilters({ ...filters, niche: e.target.value })} placeholder="Niche" style={s.input}/><input value={filters.state} onChange={(e) => setFilters({ ...filters, state: e.target.value.toUpperCase(), city: '' })} placeholder="State" maxLength={2} style={{ ...s.input, maxWidth: 90 }}/><input value={filters.city} onChange={(e) => setFilters({ ...filters, city: e.target.value })} placeholder="City / borough" style={s.input}/>
       <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })} style={s.input}><option value="">All statuses</option><option>Researching</option><option>Contacted</option><option>Interested</option><option>Follow up</option><option>Closed</option><option>Not a fit</option></select>
       <button onClick={applyFilters} style={s.secondary}>Apply</button>{hasFilters && <button onClick={clearFilters} style={s.ghost}>Clear</button>}
       <div style={s.toggle}><button aria-label="List view" onClick={() => setView('list')} style={view === 'list' ? s.toggleActive : s.toggleButton}>☰</button><button aria-label="Grid view" onClick={() => setView('grid')} style={view === 'grid' ? s.toggleActive : s.toggleButton}>▦</button></div>
