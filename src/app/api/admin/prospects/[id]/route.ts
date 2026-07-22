@@ -2,6 +2,13 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { authorizeAdmin, enforceRateLimit } from '@/lib/admin-api'
 import { groqChat } from '@/lib/groq'
 import { slugify } from '@/lib/prospect-preview'
+import { fetchPlaceHours, type PlaceHours } from '@/lib/google-places'
+
+// 24h in-memory hours cache — opening hours change ~yearly, and every Places
+// text search bills. Per-instance and ephemeral, which is fine: it only needs
+// to absorb repeat views inside a working session. Cache hits skip the quota.
+const hoursCache = new Map<string, { hours: PlaceHours | null; at: number }>()
+const HOURS_TTL_MS = 24 * 60 * 60 * 1000
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const statuses = new Set(['', 'Researching', 'Contacted', 'Interested', 'Follow up', 'Closed', 'Not a fit'])
@@ -11,11 +18,33 @@ async function getId(params: Promise<{ id: string }>) { const { id } = await par
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await authorizeAdmin(req); if (auth.response) return auth.response
-  const limited = await enforceRateLimit(auth.supabase!, auth.email!, 'prospect-detail-read', 120, 60); if (limited) return limited
+  const wantsHours = req.nextUrl.searchParams.get('hours') === '1'
+  if (!wantsHours) { const limited = await enforceRateLimit(auth.supabase!, auth.email!, 'prospect-detail-read', 120, 60); if (limited) return limited }
   const id = await getId(params); if (!id) return NextResponse.json({ error: 'Invalid lead.' }, { status: 400 })
   const { data, error } = await auth.supabase!.from('prospect_leads').select('*').eq('id', id).maybeSingle()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return data ? NextResponse.json({ prospect: data }) : NextResponse.json({ error: 'Lead not found.' }, { status: 404 })
+  if (!data) return NextResponse.json({ error: 'Lead not found.' }, { status: 404 })
+  if (!wantsHours) return NextResponse.json({ prospect: data })
+
+  // ── On-demand opening hours via Google Places ─────────────────────────────
+  // A bare business name matches Google's best GLOBAL guess — wrong-business
+  // hours look authoritative, so refuse rather than risk it.
+  if (!data.phone && !data.city && !data.state) return NextResponse.json({ hours: null, reason: 'no-signal' })
+  const cached = hoursCache.get(id)
+  if (cached && Date.now() - cached.at < HOURS_TTL_MS) return NextResponse.json({ hours: cached.hours, cached: true })
+  // Quota only for requests that actually reach Google — after validation,
+  // the 404 check, and the cache. Cache hits stay free.
+  const limited = await enforceRateLimit(auth.supabase!, auth.email!, 'prospect-hours', 60, 3600); if (limited) return limited
+  try {
+    // Phone pins the exact business when we have it; otherwise city/state anchor the name.
+    const query = [data.business, data.phone || null, !data.phone && data.city ? data.city : null, !data.phone && data.state ? data.state : null].filter(Boolean).join(' ')
+    const hours = await fetchPlaceHours(query)
+    hoursCache.set(id, { hours, at: Date.now() })
+    return NextResponse.json({ hours })
+  } catch (hoursError) {
+    console.error('[prospect-hours] lookup failed:', hoursError)
+    return NextResponse.json({ error: 'Hours lookup failed — try again in a minute.' }, { status: 502 })
+  }
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
