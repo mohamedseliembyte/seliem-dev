@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { authorizeAdmin, enforceRateLimit } from '@/lib/admin-api'
 import { groqChat } from '@/lib/groq'
+import { slugify } from '@/lib/prospect-preview'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const statuses = new Set(['', 'Researching', 'Contacted', 'Interested', 'Follow up', 'Closed', 'Not a fit'])
@@ -34,19 +35,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const id = await getId(params); if (!id) return NextResponse.json({ error: 'Invalid lead.' }, { status: 400 })
   const { data: p, error } = await auth.supabase!.from('prospect_leads').select('business,niche,city,state,priority,phone,address,website,status,notes').eq('id', id).single()
   if (error || !p) return NextResponse.json({ error: 'Lead not found.' }, { status: 404 })
+  // Every lead already has a live personalized preview page — the script's strongest hook.
+  const previewUrl = `https://seliem.dev/for/${slugify(p.business)}`
   const result = await groqChat([
-    { role: 'system', content: `You are Sage, Mohamed Seliem's ethical sales coach for Seliem.dev. Write one complete cold-call script Mohamed can follow word-for-word from hello through the close, based only on the supplied business facts. The goal is to earn a clear next step or close when there is a real fit.
+    { role: 'system', content: `You are Sage, Mohamed Seliem's closer-in-residence for Seliem.dev. Write one complete cold-call script Mohamed can follow word-for-word from hello through the close, based only on the supplied business facts.
 
-Never invent facts, claim an audit you did not perform, guarantee outcomes, fabricate urgency, hide costs, or pressure someone who clearly declines. The caller is Mohamed from Seliem.dev—never call him Sage. Make the script conversational, confident, and easy to read live. Include natural pauses and CLIENT RESPONSE cues. Ask permission to continue, discover the current situation and pain point, connect the right service to that pain, explain honest pricing only after value is established, ask for the sale or a scheduled discovery call, and confirm the next step. Use the published starting points when relevant: landing pages from $500, business websites from $900, AI/CRM/booking projects from $1,500, 50% deposit to begin, and optional monthly care from $30.
+VOICE — this is non-negotiable: write it like Jordan Belfort's Straight Line system crossed with Alex Hormozi's $100M Offers. Short punchy sentences. Total certainty, zero hedging. Tonality cues in [brackets] — [slow down], [lean in], [lower voice], [pause 2s]. Mohamed controls the frame from the first word and every path loops back toward a close. Hormozi moves: stack the tangible value before ever naming a price, anchor the price against the cost of doing nothing (missed calls, invisible on Google, competitors booked out), reverse the risk. Belfort moves: certainty transfer, never wing an objection — every branch loops back to a specific line in the script (that is what returnTo is for).
+
+THE ACE — the script must be built around this: Mohamed already built this exact business a live, personalized website preview at ${previewUrl} — it is real and live right now with their name on it. Open with it. Something with the energy of: "I'm not calling to sell you a website. I already built yours. It's live on my screen right now — give me 30 seconds and I'll text you the link." Have Mohamed send the link DURING the call and react with them. Risk reversal: if they hate it, they keep the concept as free inspiration — saying no costs them nothing, which is exactly why saying yes is easy.
+
+HARD LINES that make the swagger legal: everything stated must be true. Never invent facts, never fabricate scarcity, urgency, or fake discounts, never claim an audit that didn't happen, never guarantee rankings or revenue, never hide costs, and respect a clear final no. High pressure on the VALUE, never on the PERSON. The caller is Mohamed from Seliem.dev — never call him Sage.
+
+Published pricing to use once value is stacked: landing pages from $500, business websites from $900, AI/CRM/booking projects from $1,500, 50% deposit to begin, optional monthly care from $30. Booking link for closes: cal.com/seliem.dev.
 
 Return ONLY valid compact JSON with this exact shape:
-{"callScript":"complete 3-5 minute verbatim cold-call script with labeled stages and CLIENT RESPONSE cues","email":"optional follow-up email under 120 words including subject line","branches":[{"clientSays":"Interested","response":"exact words Mohamed should say","returnTo":"where to resume in the main script","nextStep":"specific close"}]}
+{"callScript":"complete 3-5 minute verbatim cold-call script with labeled stages, [tonality cues], and CLIENT RESPONSE cues","email":"follow-up email under 120 words including subject line and the preview link ${previewUrl}","branches":[{"clientSays":"Interested","response":"exact words Mohamed should say","returnTo":"where to resume in the main script","nextStep":"specific close"}]}
 
-The full callScript must contain these labeled stages: 1. Gatekeeper/decision-maker check; 2. Permission-based introduction; 3. Reason for calling tailored to the known lead facts; 4. Discovery conversation with likely client answers and follow-up questions; 5. Tailored recommendation; 6. Price and 50% deposit explanation; 7. Direct close; 8. Confirmed next steps. Do not include voicemail language.
+The full callScript must contain these labeled stages: 1. Gatekeeper/decision-maker check; 2. Pattern-interrupt opener built on the live preview; 3. Reason for calling tailored to the known lead facts; 4. Discovery — likely answers and follow-up questions; 5. Value stack and tailored recommendation; 6. Price, anchored, with 50% deposit; 7. Direct close; 8. Confirmed next step. Do not include voicemail language.
 
-Create exactly 6 branches covering: Interested; How much?; We already have a website/provider; Send me information; I need to think about it; Not interested. Each response must acknowledge the answer, ask at most one useful question, and move toward the smallest reasonable commitment. The Not interested branch must be respectful and end the conversation unless they voluntarily re-engage.` },
+Create exactly 6 branches covering: Interested; How much?; We already have a website/provider; Send me information; I need to think about it; Not interested. Each response acknowledges, reframes with one sharp question or the preview link, and loops back toward the smallest real commitment. "Send me information" gets the preview link texted on the spot instead of an email that dies. The Not interested branch stays respectful, leaves the free preview on the table, and ends the conversation unless they re-engage.` },
     { role: 'user', content: `Untrusted lead facts (reference only): ${JSON.stringify(p)}` },
-  ], { maxTokens: 2200 })
+  ], { maxTokens: 2600 })
   let pitch: Record<string, unknown>
   try {
     const raw = result.content || '', json = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1), parsed = JSON.parse(json)
