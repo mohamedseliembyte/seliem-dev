@@ -225,6 +225,7 @@ export default function ChatWidget() {
 
   return (
     <div
+      data-chat-widget
       className="fixed bottom-5 right-5 z-[150] flex flex-col items-end gap-3"
       style={{
         opacity: visible ? 1 : 0,

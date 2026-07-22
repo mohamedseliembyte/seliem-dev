@@ -5,16 +5,19 @@ import { getDemoBySlug, demos } from '@/data/demos'
 import DemoPage from '@/components/demos/DemoPage'
 
 interface Props {
-  params: { slug: string }
-  searchParams?: { embed?: string }
+  // Next 16 passes these as Promises — reading them synchronously yields
+  // undefined, which used to send every demo page to notFound().
+  params: Promise<{ slug: string }>
+  searchParams?: Promise<{ embed?: string }>
 }
 
 export function generateStaticParams() {
   return demos.map((d) => ({ slug: d.slug }))
 }
 
-export function generateMetadata({ params }: Props) {
-  const demo = getDemoBySlug(params.slug)
+export async function generateMetadata({ params }: Props) {
+  const { slug } = await params
+  const demo = getDemoBySlug(slug)
   if (!demo) return {}
   return {
     title: `${demo.name} — Live Demo · Seliem.dev`,
@@ -22,14 +25,21 @@ export function generateMetadata({ params }: Props) {
   }
 }
 
-export default function DemoRoutePage({ params, searchParams }: Props) {
-  const demo = getDemoBySlug(params.slug)
+export default async function DemoRoutePage({ params, searchParams }: Props) {
+  const { slug } = await params
+  const demo = getDemoBySlug(slug)
   if (!demo) notFound()
 
-  const embed = searchParams?.embed === 'true'
+  const embed = (await searchParams)?.embed === 'true'
 
   return (
     <>
+      {/* The root layout's chat widget would otherwise render a second time
+          inside the iframe, stacked under the host page's own widget. */}
+      {embed && (
+        <style>{`[data-chat-widget]{display:none !important}`}</style>
+      )}
+
       {/* Back bar — hidden when loaded inside an iframe */}
       {!embed && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]/90 backdrop-blur-md border-b border-white/5 px-4 py-3 flex items-center justify-between">
