@@ -17,7 +17,13 @@ export async function GET(req: NextRequest) {
   const search = rawSearch.replace(/[%_*,()'"\\]/g, ' ').replace(/\s+/g, ' ').trim()
   if (search) query = query.or(`business.ilike.%${search}%,niche.ilike.%${search}%,city.ilike.%${search}%,phone.ilike.%${search}%`)
   for (const key of ['priority', 'niche', 'state', 'city', 'status'] as const) { const value = cleanFilter(p.get(key), 80); if (value) query = query.eq(key, value) }
-  const { data, count, error } = await query.order('sheet_row').range((page - 1) * pageSize, page * pageSize - 1)
+  // Only leads with a follow-up on or before today.
+  if (p.get('due') === '1') { const today = new Date().toISOString().slice(0, 10); query = query.not('follow_up_at', 'is', null).lte('follow_up_at', today) }
+  // "Warm" = most recently viewed their preview first; leads never viewed sink.
+  query = p.get('sort') === 'warm'
+    ? query.order('preview_last_viewed_at', { ascending: false, nullsFirst: false })
+    : query.order('sheet_row')
+  const { data, count, error } = await query.range((page - 1) * pageSize, page * pageSize - 1)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   const { data: integration } = await auth.supabase!.from('google_integrations').select('account_email,updated_at').eq('id', 'google_sheets').maybeSingle()
   const { data: sync } = await auth.supabase!.from('google_sheet_syncs').select('*').order('started_at', { ascending: false }).limit(1).maybeSingle()

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowRight, Check, Sparkles } from 'lucide-react'
+import { ViewBeacon } from '@/components/ViewBeacon'
 import {
   findProspectBySlug,
   prospectFromQuery,
@@ -57,6 +58,7 @@ export default async function ProspectPreviewPage({ params, searchParams }: Prop
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white">
+      {prospect.id && <ViewBeacon prospectId={prospect.id} />}
       {/* ── Personalized hero ────────────────────────────────────────────── */}
       <section className="relative overflow-hidden px-4 sm:px-6 lg:px-8 pt-20 pb-16">
         <div className="absolute inset-0 hero-grid pointer-events-none" />

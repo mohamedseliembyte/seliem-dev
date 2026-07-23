@@ -54,7 +54,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = await req.json().catch(() => null) as Record<string, unknown> | null
   const notes = clean(body?.notes, 10000), status = clean(body?.status, 40)
   if (!body || !statuses.has(status)) return NextResponse.json({ error: 'Invalid update.' }, { status: 400 })
-  const { data, error } = await auth.supabase!.from('prospect_leads').update({ notes, status, updated_at: new Date().toISOString() }).eq('id', id).select('*').single()
+  const update: Record<string, unknown> = { notes, status, updated_at: new Date().toISOString() }
+  // Only touch follow_up_at when the client actually sends it, so saving notes
+  // never clears an existing follow-up date. '' clears it; else must be YYYY-MM-DD.
+  if (body && 'follow_up_at' in body) {
+    const raw = body.follow_up_at
+    if (raw === '' || raw === null) update.follow_up_at = null
+    else if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw)) update.follow_up_at = raw
+    else return NextResponse.json({ error: 'Invalid follow-up date.' }, { status: 400 })
+  }
+  const { data, error } = await auth.supabase!.from('prospect_leads').update(update).eq('id', id).select('*').single()
   return error ? NextResponse.json({ error: error.message }, { status: 500 }) : NextResponse.json({ prospect: data })
 }
 
