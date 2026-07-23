@@ -12,6 +12,8 @@ import type { Demo } from '@/types'
 // generate a link for anyone who isn't in the database yet.
 
 export type ProspectPreview = {
+  /** Present only for database-resolved prospects — powers view tracking. */
+  id?: string
   business: string
   niche: string | null
   city: string | null
@@ -89,6 +91,7 @@ function slugToSearches(slug: string): Array<{ pattern: string; limit: number }>
 }
 
 type LeadRow = {
+  id: string
   business: string
   niche: string | null
   city: string | null
@@ -120,7 +123,7 @@ export async function findProspectBySlug(rawSlug: string): Promise<ProspectPrevi
   for (const { pattern, limit } of slugToSearches(slug)) {
     const { data, error } = await supabase
       .from('prospect_leads')
-      .select('business, niche, city, state, priority')
+      .select('id, business, niche, city, state, priority')
       .ilike('business', `%${pattern}%`)
       .limit(limit)
 
@@ -131,6 +134,7 @@ export async function findProspectBySlug(rawSlug: string): Promise<ProspectPrevi
   if (!row) return null
 
   return {
+    id: row.id,
     business: row.business,
     niche: row.niche,
     city: row.city,

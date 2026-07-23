@@ -127,7 +127,7 @@ export function ProspectMap({ token, selectedState, selectedCity, onSelect }: Pr
   return <section className="lead-map" style={s.shell}>
     <div style={s.heading}><div><span style={s.eyebrow}>LEAD MAP</span><h2 style={s.title}>Explore prospects by location</h2><p style={s.muted}>Select a state, then choose a city or borough to filter the complete lead list below.</p></div>{selectedState && <button onClick={() => onSelect('', '')} style={s.clear}>Clear location</button>}</div>
     {error && <p style={s.error}>{error}</p>}
-    <div style={s.layout}>
+    <div className="lm-layout" style={s.layout}>
       {selectedState ? <LeadTileMap stateCode={selectedState} stateName={stateNames[selectedState] || selectedState} index={places?.[selectedState]} cities={cities} selectedCity={selectedCity} onSelect={onSelect}/> : <div ref={wrapRef} style={s.mapWrap}>
         <svg role="img" aria-label="Interactive map of United States lead counts" viewBox="0 0 960 600" style={s.map} onMouseMove={(e) => positionTooltip(e.clientX, e.clientY)} onMouseLeave={() => { setHovered(''); setHoveredPin(null) }}>
           <g style={{ transform: zoom.transform, transformOrigin: '0 0', transition: 'transform .55s cubic-bezier(.22,1,.36,1)' }}>
@@ -157,7 +157,7 @@ export function ProspectMap({ token, selectedState, selectedCity, onSelect }: Pr
         </div>
         <div style={s.legend}><span>Fewer leads</span><i style={{ ...s.swatch, background: 'rgba(212,168,83,.2)' }}/><i style={{ ...s.swatch, background: 'rgba(212,168,83,.5)' }}/><i style={{ ...s.swatch, background: 'rgba(212,168,83,.8)' }}/><span>More leads</span></div>
       </div>}
-      <aside style={s.panel}>
+      <aside className="lm-panel" style={s.panel}>
         <div style={s.panelHead}><div><span style={s.eyebrow}>{selectedState ? stateNames[selectedState] || selectedState : 'ALL STATES'}</span><strong style={s.panelTitle}>{selectedState ? `${(counts[selectedState] || 0).toLocaleString()} leads` : `${states.reduce((sum, row) => sum + row.count, 0).toLocaleString()} mapped leads`}</strong></div></div>
         {selectedState ? <><input value={citySearch} onChange={(e) => setCitySearch(e.target.value)} placeholder="Search city or borough…" style={s.input}/><div style={s.cityList}><button onClick={() => onSelect(selectedState, '')} style={!selectedCity ? s.cityActive : s.city}><span>All of {selectedState}</span><strong>{(counts[selectedState] || 0).toLocaleString()}</strong></button>{visibleCities.map((row) => <button key={row.city || 'Unknown city'} onClick={() => onSelect(selectedState, row.city === 'Unknown city' ? '' : row.city || '')} style={selectedCity === row.city ? s.cityActive : s.city}><span>{row.city}</span><strong>{row.count.toLocaleString()}</strong></button>)}</div></> : <div style={s.stateList}>{states.map((row) => <button key={row.state} onClick={() => chooseState(row.state)} onMouseEnter={() => setHovered(row.state)} onMouseLeave={() => setHovered('')} style={hovered === row.state ? s.cityHover : s.city}><span>{row.state}</span><strong>{row.count.toLocaleString()}</strong></button>)}</div>}
       </aside>
