@@ -24,7 +24,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { data, error } = await auth.supabase!.from('prospect_leads').select('*').eq('id', id).maybeSingle()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'Lead not found.' }, { status: 404 })
-  if (!wantsHours) return NextResponse.json({ prospect: data })
+  // placesConfigured lets the detail page hide the "Load hours" button when the
+  // Places key isn't set, rather than offer a button that can only ever error.
+  if (!wantsHours) return NextResponse.json({ prospect: data, placesConfigured: !!process.env.GOOGLE_PLACES_API_KEY })
 
   // ── On-demand opening hours via Google Places ─────────────────────────────
   // A bare business name matches Google's best GLOBAL guess — wrong-business
