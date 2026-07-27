@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { getSupabaseBrowser } from '@/lib/supabase-client'
 import { exchangeGoogleToken, googlePopupSignIn } from '@/lib/google-auth'
+import { sessionExpired } from '@/lib/admin-session'
 import { ProspectMap } from '@/components/admin/ProspectMap'
 
 type Prospect = { id: string; priority: string | null; business: string; niche: string | null; city: string | null; state: string | null; phone: string | null; address: string | null; website: string | null; maps_url: string | null; status: string | null; deal_amount?: number | string | null; deposit_paid_on?: string | null; balance_paid_on?: string | null; care_plan_monthly?: number | string | null; next_invoice_on?: string | null; preview_views?: number | null; preview_last_viewed_at?: string | null; follow_up_at?: string | null }
@@ -27,7 +28,7 @@ export default function ProspectsPage() {
     Object.entries(currentFilters).forEach(([key, value]) => { if (value) params.set(key, value) })
     const response = await fetch(`/api/admin/prospects?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } })
     const payload = await response.json()
-    if (!response.ok) setError(payload.error || 'Could not load prospects.')
+    if (!response.ok) { if (await sessionExpired(response)) { setToken(''); setProspects([]); setMeta(null); setLoading(false); return } setError(payload.error || 'Could not load prospects.') }
     else { setProspects((rows) => append ? [...rows, ...payload.prospects] : payload.prospects); setMeta(payload) }
     setLoading(false)
   }, [])
