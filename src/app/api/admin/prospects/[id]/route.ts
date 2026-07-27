@@ -65,6 +65,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     else if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw)) update.follow_up_at = raw
     else return NextResponse.json({ error: 'Invalid follow-up date.' }, { status: 400 })
   }
+  // Payment fields — same "only when sent" rule so saving notes can't wipe money.
+  for (const key of ['deposit_paid_on', 'balance_paid_on', 'next_invoice_on'] as const) {
+    if (!(key in body)) continue
+    const raw = body[key]
+    if (raw === '' || raw === null) update[key] = null
+    else if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw)) update[key] = raw
+    else return NextResponse.json({ error: 'Invalid payment date.' }, { status: 400 })
+  }
+  for (const key of ['deal_amount', 'care_plan_monthly'] as const) {
+    if (!(key in body)) continue
+    const raw = body[key]
+    if (raw === '' || raw === null) { update[key] = null; continue }
+    const amount = typeof raw === 'number' ? raw : Number(raw)
+    if (!Number.isFinite(amount) || amount < 0 || amount > 1_000_000) return NextResponse.json({ error: 'Invalid amount.' }, { status: 400 })
+    update[key] = Math.round(amount * 100) / 100
+  }
   const { data, error } = await auth.supabase!.from('prospect_leads').update(update).eq('id', id).select('*').single()
   return error ? NextResponse.json({ error: error.message }, { status: 500 }) : NextResponse.json({ prospect: data })
 }

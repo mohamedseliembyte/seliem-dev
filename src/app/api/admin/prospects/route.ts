@@ -19,6 +19,12 @@ export async function GET(req: NextRequest) {
   for (const key of ['priority', 'niche', 'state', 'city', 'status'] as const) { const value = cleanFilter(p.get(key), 80); if (value) query = query.eq(key, value) }
   // Only leads with a follow-up on or before today.
   if (p.get('due') === '1') { const today = new Date().toISOString().slice(0, 10); query = query.not('follow_up_at', 'is', null).lte('follow_up_at', today) }
+  // "Owed" = money outstanding: an unpaid project balance, or a care-plan
+  // invoice that's due (manual invoicing, so the app has to nag instead of bill).
+  if (p.get('owed') === '1') {
+    const today = new Date().toISOString().slice(0, 10)
+    query = query.or(`and(deal_amount.not.is.null,balance_paid_on.is.null),and(care_plan_monthly.not.is.null,next_invoice_on.lte.${today})`)
+  }
   // "Warm" = most recently viewed their preview first; leads never viewed sink.
   query = p.get('sort') === 'warm'
     ? query.order('preview_last_viewed_at', { ascending: false, nullsFirst: false })
