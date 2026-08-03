@@ -100,7 +100,7 @@ const fadeUp = {
   }),
 }
 
-const headline = ['Websites', 'That', 'Actually', 'Work']
+const headline = ['Growth,', 'Built', 'And', 'Run']
 
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 const meshFallback = (
@@ -185,7 +185,7 @@ export default function Hero() {
             >
               <Sparkles className="w-3.5 h-3.5 text-[#c9a84c]" />
               <span className="text-xs font-semibold tracking-widest uppercase text-[#c9a84c]/80">
-                Premium Web Design & AI Automations
+                Web · Advertising · Marketing · AI
               </span>
             </motion.div>
 
@@ -215,7 +215,7 @@ export default function Hero() {
               custom={0.5} variants={fadeUp} initial="hidden" animate="visible"
               className="text-lg text-gray-400 leading-relaxed mb-8 max-w-lg"
             >
-              Premium websites and AI automations built to help you get noticed, capture leads, and turn visitors into action.
+              A full-service agency for websites, advertising, marketing and AI systems — everything that gets you found, gets you booked, and runs itself.
             </motion.p>
 
             <motion.div

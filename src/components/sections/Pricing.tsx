@@ -35,16 +35,30 @@ const tiers = [
     featured: true,
   },
   {
-    name: 'Growth + AI',
+    name: 'Growth Engine',
     price: '$1,500+',
     suffix: 'starting at',
-    blurb: 'A lead-generating website with booking, CRM, or AI automation.',
+    blurb: 'The full stack: site, campaigns and AI systems working together.',
     features: [
       'Everything in Business Website',
-      'Sage AI chat that captures leads',
-      'Automations & follow-ups',
-      'CRM dashboard + invoices',
-      'Custom scope and support',
+      'Ad campaigns built & managed',
+      'SEO, content & review generation',
+      'AI receptionist + follow-up automation',
+      'CRM, dashboards & integrations',
+    ],
+    featured: false,
+  },
+  {
+    name: 'AI Infrastructure',
+    price: 'Custom',
+    suffix: 'scoped per project',
+    blurb: 'Custom AI built on your data, wired into the tools you already use.',
+    features: [
+      'Internal assistants & knowledge systems',
+      'Document, intake & data pipelines',
+      'CRM / API / webhook integrations',
+      'Model routing with fallbacks',
+      'Ongoing tuning & monitoring',
     ],
     featured: false,
   },
@@ -113,7 +127,7 @@ export default function Pricing() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
           {tiers.map((tier, i) => (
             <motion.div
               key={tier.name}

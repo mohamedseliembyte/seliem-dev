@@ -16,7 +16,7 @@ const steps = [
     icon: Sliders,
     title: 'Customize Your Website',
     description:
-      'I design and build your site to match your brand exactly — your colors, your copy, your personality. You review every section and we refine until it\'s exactly right.',
+      'We design and build your site to match your brand exactly — your colors, your copy, your personality. You review every section and we refine until it\'s exactly right.',
   },
   {
     number: '03',
