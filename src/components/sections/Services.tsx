@@ -1,45 +1,57 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Globe, RefreshCw, Bot, CalendarCheck, LayoutTemplate, Rocket } from 'lucide-react'
+import { Globe, Megaphone, TrendingUp, Bot, Network, Palette, RefreshCw, Rocket } from 'lucide-react'
 
 const services = [
   {
     icon: Globe,
-    title: 'Premium Website Design',
+    title: 'Web Design & Development',
     description:
-      'Fully custom-designed sites built from scratch. No templates, no drag-and-drop — just a site that actually reflects your brand and converts visitors.',
+      'Custom sites and web apps built from scratch — no templates, no page builders. Fast, mobile-first, and engineered to turn traffic into booked work.',
     highlight: true,
   },
   {
-    icon: RefreshCw,
-    title: 'Website Redesign',
+    icon: Megaphone,
+    title: 'Advertising & Paid Media',
     description:
-      'Already have a site that\'s letting you down? I rebuild it from the ground up — faster, sharper, and built to perform.',
+      'Google, Meta and local search campaigns — built, launched and managed. Landing pages, tracking and creative included, so every dollar is measurable.',
+  },
+  {
+    icon: TrendingUp,
+    title: 'Marketing & SEO',
+    description:
+      'Local SEO, Google Business optimization, content, email and social. The compounding work that makes customers find you before your competitors.',
   },
   {
     icon: Bot,
     title: 'AI Automations',
     description:
-      'Automate your follow-ups, lead capture, scheduling, and more. AI workflows that work while you sleep.',
+      'AI receptionists, instant lead follow-up, booking and review automation. Systems that answer, qualify and schedule around the clock.',
   },
   {
-    icon: CalendarCheck,
-    title: 'Booking & Lead Capture',
+    icon: Network,
+    title: 'AI Infrastructure',
     description:
-      'Integrated booking systems and lead forms that turn website visitors into real appointments and real revenue.',
+      'Custom AI built on your data — internal assistants, document and knowledge systems, CRM and API integrations, and the pipelines behind them.',
   },
   {
-    icon: LayoutTemplate,
-    title: 'Business Website Templates',
+    icon: Palette,
+    title: 'Branding & Creative',
     description:
-      'Premium pre-built templates for specific industries — ready to launch fast, with professional results every time.',
+      'Logo, identity, photography direction and the copy that carries it. A brand that looks like the quality of work you actually deliver.',
+  },
+  {
+    icon: RefreshCw,
+    title: 'Redesign & Migration',
+    description:
+      'Rebuild a site that is losing you customers, or move off a platform that is holding you back — without losing your rankings.',
   },
   {
     icon: Rocket,
-    title: 'Launch & Support',
+    title: 'Hosting, Care & Support',
     description:
-      'From domain setup to deployment, I handle the technical side so you can focus on running your business.',
+      'Domains, hosting, business email, security, updates and monitoring. Ongoing care plans so the whole system keeps running without you thinking about it.',
   },
 ]
 
@@ -66,13 +78,13 @@ export default function Services() {
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           className="mb-16"
         >
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#c9a84c] mb-3">What I Build</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#c9a84c] mb-3">Full-Service Capabilities</p>
           <h2 className="text-4xl sm:text-5xl font-black text-white leading-tight mb-4">
-            Every service,{' '}
-            <span className="gold-text">built to deliver.</span>
+            One agency,{' '}
+            <span className="gold-text">every channel covered.</span>
           </h2>
           <p className="text-gray-400 text-lg max-w-xl">
-            Whether you need a full website build, a redesign, or smart automations — I handle it.
+            Websites, advertising, marketing, and the AI systems behind them — designed, built and managed under one roof.
           </p>
         </motion.div>
 

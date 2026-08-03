@@ -13,7 +13,7 @@ const jsonLd = {
   '@type': 'ProfessionalService',
   name: 'Seliem.dev',
   description:
-    'Premium custom websites and AI automations for businesses, creators, and professionals.',
+    'Full-service digital agency: websites, advertising, marketing, AI automations and AI infrastructure for local businesses and growing brands.',
   url: 'https://seliem.dev',
   email: 'hello@seliem.dev',
   image: 'https://seliem.dev/logo.png',
@@ -24,7 +24,7 @@ const jsonLd = {
     'https://www.tiktok.com/@seliem.dev',
   ],
   areaServed: 'Worldwide',
-  serviceType: ['Web Design', 'Website Redesign', 'AI Automation', 'Lead Capture'],
+  serviceType: ['Web Design', 'Web Development', 'Website Redesign', 'Digital Advertising', 'Paid Media Management', 'Search Engine Optimization', 'Digital Marketing', 'Branding', 'AI Automation', 'AI Infrastructure', 'Lead Capture'],
 }
 
 const inter = Inter({
@@ -35,17 +35,17 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://seliem.dev'),
-  title: 'Seliem.dev — Premium Websites & AI Automations',
+  title: 'Seliem.dev — Web, Advertising, Marketing & AI Agency',
   description:
-    'Premium websites and AI automations for businesses, creators, and professionals. Built to convert visitors into leads.',
-  keywords: ['web design', 'AI automations', 'premium websites', 'business websites', 'Next.js'],
+    'Full-service agency for websites, advertising, marketing, AI automations and AI infrastructure. Built to get you found, booked, and running on autopilot.',
+  keywords: ['digital agency', 'web design agency', 'marketing agency', 'advertising agency', 'AI automations', 'AI infrastructure', 'SEO', 'paid media', 'business websites'],
   alternates: {
     canonical: 'https://seliem.dev',
   },
   openGraph: {
-    title: 'Seliem.dev — Premium Websites & AI Automations',
+    title: 'Seliem.dev — Web, Advertising, Marketing & AI Agency',
     description:
-      'Premium websites and AI automations built to help you get noticed, capture leads, and turn visitors into action.',
+      'Websites, advertising, marketing and AI systems — designed, built and managed under one roof.',
     url: 'https://seliem.dev',
     siteName: 'Seliem.dev',
     type: 'website',
@@ -54,15 +54,15 @@ export const metadata: Metadata = {
         url: '/logo.png',
         width: 1200,
         height: 630,
-        alt: 'Seliem.dev — Premium Websites & AI Automations',
+        alt: 'Seliem.dev — Web, Advertising, Marketing & AI Agency',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Seliem.dev — Premium Websites & AI Automations',
+    title: 'Seliem.dev — Web, Advertising, Marketing & AI Agency',
     description:
-      'Premium websites and AI automations built to help you get noticed, capture leads, and turn visitors into action.',
+      'Websites, advertising, marketing and AI systems — designed, built and managed under one roof.',
     images: ['/logo.png'],
   },
   icons: {
