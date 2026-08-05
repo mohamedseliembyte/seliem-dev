@@ -175,6 +175,37 @@ export const services: Service[] = [
     related: ['ai-automations', 'web-design-development', 'hosting-care'],
   },
   {
+    slug: 'app-development-launch',
+    name: 'Apps & App Store Launch',
+    category: 'Build',
+    tagline: 'Get your app built, published and live on the stores.',
+    summary: 'iOS and Android apps built, or your existing app published and connected.',
+    overview: [
+      'Two kinds of work here. If you have an app or a web app already, we handle the part most people get stuck on: packaging it, setting up the developer accounts, passing App Store and Play Store review, and pointing your own domain at it.',
+      'If you do not have one yet, we build it — usually alongside the website so they share the same brand, booking and back end rather than becoming two systems you maintain separately.',
+    ],
+    deliverables: [
+      'iOS and Android builds from your site or from scratch',
+      'App Store and Google Play submission, including review fixes',
+      'Developer account setup and signing certificates',
+      'Custom domain and deep links wired to the app',
+      'Store listing: icon, screenshots, description',
+      'Update releases and version management',
+    ],
+    outcomes: [
+      'Be on the home screen instead of buried in a browser tab',
+      'Get through store review without weeks of rejections',
+      'Push updates without rebuilding from scratch each time',
+    ],
+    faqs: [
+      { q: 'I already have a website — can it become an app?', a: 'Usually yes. Plenty of sites can be packaged into a real installable app, and we will tell you honestly whether that is the right call for yours or whether a native build serves you better.' },
+      { q: 'Who owns the developer account?', a: 'You do. It is registered in your business name so the app stays yours, and Apple and Google bill you directly for their developer fees.' },
+      { q: 'How long does store approval take?', a: 'Review itself is typically days, but first submissions often come back with fixes needed. We handle those rounds — that is the part we are actually being paid for.' },
+    ],
+    startingAt: 'Custom',
+    related: ['web-design-development', 'ai-automations', 'hosting-care'],
+  },
+  {
     slug: 'branding-creative',
     name: 'Branding & Creative',
     category: 'Build',

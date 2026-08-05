@@ -33,7 +33,6 @@ function esc(s: unknown): string {
 }
 
 export async function POST(req: NextRequest) {
-  const resend = new Resend(process.env.RESEND_API_KEY)
 
   // Rate limiting
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
@@ -67,15 +66,15 @@ export async function POST(req: NextRequest) {
   if (!email || typeof email !== 'string' || !/^\S+@\S+\.\S+$/.test(email)) {
     return NextResponse.json({ error: 'A valid email address is required.' }, { status: 400 })
   }
-  if (!message || typeof message !== 'string' || message.trim().length < 5) {
+  // Support requests still need a written description — there's no structured
+  // alternative there. Project enquiries don't: the quick-start survey sends
+  // structured answers instead of prose, and demanding a paragraph up front is
+  // the biggest drop-off on the form.
+  if (isSupport && (!message || typeof message !== 'string' || message.trim().length < 5)) {
     return NextResponse.json({ error: 'Please include a message.' }, { status: 400 })
   }
 
-  // ── Lead-form-only validation ──────────────────────────────────────────────
   const { budget } = body
-  if (!isSupport && (!budget || typeof budget !== 'string')) {
-    return NextResponse.json({ error: 'Please select a budget range.' }, { status: 400 })
-  }
 
   const businessName = body.businessName ?? 'N/A'
   const phone        = body.phone        ?? 'N/A'
@@ -122,6 +121,11 @@ export async function POST(req: NextRequest) {
     `
 
   try {
+    // Constructed here, not at the top of the handler: the Resend client throws
+    // when the key is missing, which would turn every submission — including
+    // invalid ones that should 400 — into an opaque 500.
+    const resend = new Resend(process.env.RESEND_API_KEY)
+
     // Notify the right inbox
     await resend.emails.send({
       from:     FROM_ADDRESS,

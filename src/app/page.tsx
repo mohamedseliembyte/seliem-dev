@@ -8,7 +8,8 @@ import Pricing from '@/components/sections/Pricing'
 // Testimonials hidden until real client quotes are available — re-enable below.
 // import Testimonials from '@/components/sections/Testimonials'
 import HowItWorks from '@/components/sections/HowItWorks'
-import LeadForm from '@/components/sections/LeadForm'
+import Work from '@/components/sections/Work'
+import QuickStart from '@/components/sections/QuickStart'
 import Contact from '@/components/sections/Contact'
 import Marquee from '@/components/ui/Marquee'
 import ErrorBoundary from '@/components/ErrorBoundary'
@@ -31,14 +32,18 @@ export default function HomePage() {
           <Services />
         </ErrorBoundary>
         <ErrorBoundary>
+          <Work />
+        </ErrorBoundary>
+        <ErrorBoundary>
           <Pricing />
         </ErrorBoundary>
-        {/* Testimonials hidden until real client quotes exist. */}
+        {/* Testimonials stay hidden until real client quotes exist — Work above
+            shows shipped product instead, which is checkable rather than claimed. */}
         <ErrorBoundary>
           <HowItWorks />
         </ErrorBoundary>
         <ErrorBoundary>
-          <LeadForm />
+          <QuickStart />
         </ErrorBoundary>
         <ErrorBoundary>
           <Contact />
