@@ -86,6 +86,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={inter.variable}>
       <body className="bg-[#0a0a0a] text-white antialiased">
         {/* Skip to main content — visible only on keyboard focus */}
+        {/* Sections animate in via framer-motion from opacity:0. If JS never
+            runs, that would leave the page blank — this reveals everything. */}
+        <noscript>
+          <style>{`[style*="opacity:0"],[style*="opacity: 0"]{opacity:1!important;transform:none!important}`}</style>
+        </noscript>
         <a href="#main-content" className="skip-to-content">
           Skip to main content
         </a>

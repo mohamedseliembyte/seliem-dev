@@ -57,8 +57,8 @@ function PrivacyModal({ onClose }: { onClose: () => void }) {
               <h3 className="text-white font-semibold mb-2 text-sm">What data is collected</h3>
               <p>
                 When you submit the contact form, we collect your name, email address, phone number
-                (optional), business name (optional), business type (optional), estimated budget,
-                and your message.
+                (optional), business name (optional), business type (optional), estimated budget
+                (optional), and your message (optional).
               </p>
             </section>
 
@@ -320,10 +320,10 @@ export default function LeadForm() {
                         />
                       </div>
                       <div>
-                        <label htmlFor="budget" className={labelClass}>Estimated Budget *</label>
+                        <label htmlFor="budget" className={labelClass}>Estimated Budget</label>
                         <select
                           id="budget"
-                          {...register('budget', { required: 'Please select a budget' })}
+                          {...register('budget')}
                           className={`${inputClass} cursor-pointer`}
                           defaultValue=""
                         >
@@ -345,7 +345,7 @@ export default function LeadForm() {
                         <input
                           id="goals"
                           {...register('goals', {
-                            required: selectedBudget === 'Not sure yet' ? 'Please describe your goals' : false,
+                            required: false,
                           })}
                           placeholder="e.g. More leads, better first impression, sell online..."
                           className={inputClass}
@@ -356,12 +356,12 @@ export default function LeadForm() {
 
                     {/* Message */}
                     <div>
-                      <label htmlFor="message" className={labelClass}>Message *</label>
+                      <label htmlFor="message" className={labelClass}>Anything else?</label>
                       <textarea
                         id="message"
-                        {...register('message', { required: 'Please add a message' })}
-                        rows={4}
-                        placeholder="Tell me about your project..."
+                        {...register('message')}
+                        rows={3}
+                        placeholder="Optional — what are you hoping to fix or improve?"
                         className={`${inputClass} resize-none`}
                       />
                       {errors.message && <p className={errorClass} role="alert">{errors.message.message}</p>}
