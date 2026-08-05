@@ -162,7 +162,7 @@ export function LeadTileMap({ stateCode, stateName, index, cities, selectedCity,
   }
 
   const ready = view && size.w > 0
-  let tiles: { key: string; x: number; y: number; url: string }[] = []
+  const tiles: { key: string; x: number; y: number; url: string }[] = []
   let originX = 0, originY = 0
   if (ready) {
     originX = view.cx - size.w / 2

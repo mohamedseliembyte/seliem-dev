@@ -88,12 +88,12 @@ export default function Navbar() {
             </a>
 
             {/* One clear primary CTA */}
-            <a
+            <Link
               href="/#contact"
               className="hidden md:inline-flex items-center rounded-full gold-gradient text-black px-4 py-1.5 text-sm font-semibold hover:opacity-90 transition-opacity"
             >
               Start a project
-            </a>
+            </Link>
 
             {/* Account */}
             <Link
@@ -132,13 +132,13 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
-          <a
+          <Link
             href="/#contact"
             onClick={closeMobile}
             className="block py-3 text-base font-semibold text-[#c9a84c] border-b border-white/5"
           >
             Start a project
-          </a>
+          </Link>
           <Link
             href="/account"
             onClick={closeMobile}
