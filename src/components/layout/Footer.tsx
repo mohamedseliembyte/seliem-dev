@@ -17,10 +17,10 @@ function TikTokIcon({ className }: { className?: string }) {
 
 const navLinks = [
   { label: 'Home',         href: '/' },
-  { label: 'Live Demos',   href: '#demos' },
-  { label: 'Services',     href: '#services' },
-  { label: 'How It Works', href: '#how-it-works' },
-  { label: 'Contact',      href: '#contact' },
+  { label: 'Live Demos',   href: '/#demos' },
+  { label: 'Services',     href: '/services' },
+  { label: 'How It Works', href: '/#how-it-works' },
+  { label: 'Contact',      href: '/#contact' },
 ]
 
 export default function Footer() {
