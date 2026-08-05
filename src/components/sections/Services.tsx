@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Globe, Megaphone, TrendingUp, Bot, Network, Palette, RefreshCw, Rocket } from 'lucide-react'
 
@@ -7,6 +8,7 @@ const services = [
   {
     icon: Globe,
     title: 'Web Design & Development',
+    slug: 'web-design-development',
     description:
       'Custom sites and web apps built from scratch — no templates, no page builders. Fast, mobile-first, and engineered to turn traffic into booked work.',
     highlight: true,
@@ -14,42 +16,49 @@ const services = [
   {
     icon: Megaphone,
     title: 'Advertising & Paid Media',
+    slug: 'advertising-paid-media',
     description:
       'Google, Meta and local search campaigns — built, launched and managed. Landing pages, tracking and creative included, so every dollar is measurable.',
   },
   {
     icon: TrendingUp,
     title: 'Marketing & SEO',
+    slug: 'marketing-seo',
     description:
       'Local SEO, Google Business optimization, content, email and social. The compounding work that makes customers find you before your competitors.',
   },
   {
     icon: Bot,
     title: 'AI Automations',
+    slug: 'ai-automations',
     description:
       'AI receptionists, instant lead follow-up, booking and review automation. Systems that answer, qualify and schedule around the clock.',
   },
   {
     icon: Network,
     title: 'AI Infrastructure',
+    slug: 'ai-infrastructure',
     description:
       'Custom AI built on your data — internal assistants, document and knowledge systems, CRM and API integrations, and the pipelines behind them.',
   },
   {
     icon: Palette,
     title: 'Branding & Creative',
+    slug: 'branding-creative',
     description:
       'Logo, identity, photography direction and the copy that carries it. A brand that looks like the quality of work you actually deliver.',
   },
   {
     icon: RefreshCw,
     title: 'Redesign & Migration',
+    slug: 'redesign-migration',
     description:
       'Rebuild a site that is losing you customers, or move off a platform that is holding you back — without losing your rankings.',
   },
   {
     icon: Rocket,
     title: 'Hosting, Care & Support',
+    slug: 'hosting-care',
     description:
       'Domains, hosting, business email, security, updates and monitoring. Ongoing care plans so the whole system keeps running without you thinking about it.',
   },
@@ -114,12 +123,12 @@ export default function Services() {
               </div>
               <p className="text-gray-400 leading-relaxed max-w-2xl">{featured.description}</p>
             </div>
-            <a
-              href="#contact"
+            <Link
+              href={`/services/${featured.slug}`}
               className="shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold gold-gradient text-black hover:shadow-lg hover:shadow-[#c9a84c]/25 hover:scale-[1.02] transition-all duration-200"
             >
-              Get Started
-            </a>
+              Explore service
+            </Link>
           </div>
         </motion.div>
 
@@ -143,6 +152,9 @@ export default function Services() {
                 </div>
                 <h3 className="text-base font-semibold text-white mb-2">{service.title}</h3>
                 <p className="text-sm text-gray-500 leading-relaxed">{service.description}</p>
+                <Link href={`/services/${service.slug}`} className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[#c9a84c] hover:gap-2.5 transition-all">
+                  Learn more <span aria-hidden>→</span>
+                </Link>
               </motion.div>
             )
           })}
