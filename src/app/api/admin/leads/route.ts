@@ -111,6 +111,61 @@ export async function GET(req: NextRequest) {
   })
 }
 
+// ── POST /api/admin/leads — add a client by hand ──────────────────────────────
+// Clients who arrived by phone, referral or a friend never filled in the
+// contact form, so they have no record — and without one they cannot be given
+// an agreement, an invoice, a reminder or a pause. This creates that record.
+export async function POST(req: NextRequest) {
+  const supabase = getSupabaseAdmin()
+  if (!supabase) return NextResponse.json({ error: 'Database not configured.' }, { status: 500 })
+
+  const auth = await authorize(req, supabase)
+  if (auth instanceof NextResponse) return auth
+
+  let body: Record<string, unknown>
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }) }
+
+  const str = (v: unknown, max: number) =>
+    typeof v === 'string' && !/[\u0000-\u001f]/.test(v) ? v.trim().slice(0, max) : ''
+
+  const name = str(body.name, 120)
+  const email = str(body.email, 200)
+  if (name.length < 2) return NextResponse.json({ error: 'A name is required.' }, { status: 400 })
+  if (!/^\S+@\S+\.\S+$/.test(email)) return NextResponse.json({ error: 'A valid email is required.' }, { status: 400 })
+
+  // Don't silently create a second record for someone already in the system —
+  // duplicate clients mean duplicate invoices and reminders.
+  const { data: existing } = await supabase.from('leads').select('id, name').ilike('email', email).maybeSingle()
+  if (existing) {
+    return NextResponse.json(
+      { error: `${existing.name || 'A client'} already exists with that email.`, id: existing.id },
+      { status: 409 },
+    )
+  }
+
+  const { data, error } = await supabase
+    .from('leads')
+    .insert({
+      name,
+      email,
+      phone: str(body.phone, 60) || null,
+      business_name: str(body.business_name, 160) || null,
+      project_name: str(body.project_name, 160) || null,
+      business_type: str(body.business_type, 100) || null,
+      budget: str(body.budget, 60) || null,
+      message: str(body.message, 4000) || 'Added manually from the admin.',
+      type: 'project',
+      source: 'manual',
+      status: str(body.status, 40) || 'new',
+      read_at: new Date().toISOString(), // added by hand, so it is already "seen"
+    })
+    .select('*')
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ lead: data })
+}
+
 // ── PATCH /api/admin/leads — update a lead's status, notes, domain_status, website ──
 export async function PATCH(req: NextRequest) {
   const supabase = getSupabaseAdmin()
