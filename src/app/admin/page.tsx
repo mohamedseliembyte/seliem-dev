@@ -149,6 +149,11 @@ export default function AdminPage() {
   const [tab, setTab] = useState<'details' | 'chat'>('details')
   const [filter, setFilter] = useState<string>('all')
   const [saving, setSaving] = useState(false)
+  // Clients who came by phone or referral have no record; this creates one so
+  // they can be given agreements, invoices, reminders and a pause switch.
+  const [showAddClient, setShowAddClient] = useState(false)
+  const [newClient, setNewClient] = useState({ name: '', email: '', phone: '', business_name: '', project_name: '' })
+  const [addError, setAddError] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [datePreset, setDatePreset] = useState<DateRangePreset>('all')
@@ -230,6 +235,27 @@ export default function AdminPage() {
       setLeads((prev) => prev.map((l) => l.id === id ? { ...l, ...updates } as Lead : l))
       if (selected?.id === id) setSelected((s) => s ? { ...s, ...updates } as Lead : s)
     } catch { /* silent */ }
+    setSaving(false)
+  }
+
+  const addClient = async () => {
+    if (!session) return
+    setAddError(''); setSaving(true)
+    try {
+      const res = await fetch('/api/admin/leads', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(newClient),
+      })
+      const payload = await res.json()
+      if (!res.ok) setAddError(payload.error || 'Could not add the client.')
+      else {
+        setLeads((prev) => [payload.lead as Lead, ...prev])
+        setSelected(payload.lead as Lead)
+        setShowAddClient(false)
+        setNewClient({ name: '', email: '', phone: '', business_name: '', project_name: '' })
+      }
+    } catch { setAddError('Could not add the client.') }
     setSaving(false)
   }
 
@@ -660,7 +686,8 @@ export default function AdminPage() {
           {(dateFrom || dateTo) && <button onClick={() => { setDateFrom(''); setDateTo('') }} style={s.signOutBtn}>Reset</button>}
         </>}
         <span style={{ color: '#666', fontSize: 12 }}>{filtered.length} shown</span>
-        <button onClick={exportCsv} disabled={filtered.length === 0} style={{ ...s.signOutBtn, marginLeft: 'auto', opacity: filtered.length === 0 ? 0.4 : 1 }}>⬇ Export CSV</button>
+        <button onClick={() => { setAddError(''); setShowAddClient(true) }} style={{ ...s.signOutBtn, marginLeft: 'auto' }}>+ Add client</button>
+        <button onClick={exportCsv} disabled={filtered.length === 0} style={{ ...s.signOutBtn, opacity: filtered.length === 0 ? 0.4 : 1 }}>⬇ Export CSV</button>
       </div>
 
       {/* Origin filter: forms vs chat-originated leads */}
@@ -1225,6 +1252,49 @@ export default function AdminPage() {
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {showAddClient && (
+        <div style={s.overlay} onClick={() => setShowAddClient(false)}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ ...s.drawer, width: 'min(460px,100%)' }}
+          >
+            <h2 style={{ margin: '0 0 6px', fontSize: 20 }}>Add a client</h2>
+            <p style={{ margin: '0 0 20px', color: '#8d8d8d', fontSize: 13, lineHeight: 1.5 }}>
+              For clients who came by phone or referral. Creating the record is what lets you send
+              them an agreement, an invoice or a reminder — and pause their project if it comes to that.
+            </p>
+            {([
+              ['name', 'Full name *', 'Jordan Reyes'],
+              ['email', 'Email *', 'jordan@example.com'],
+              ['phone', 'Phone', '(555) 000-0000'],
+              ['business_name', 'Business name', 'Reyes Auto Body'],
+              ['project_name', 'Project', 'Website + booking'],
+            ] as const).map(([key, label, placeholder]) => (
+              <div key={key} style={{ marginBottom: 12 }}>
+                <div style={s.fieldLabel}>{label}</div>
+                <input
+                  value={newClient[key]}
+                  onChange={(e) => setNewClient({ ...newClient, [key]: e.target.value })}
+                  placeholder={placeholder}
+                  style={{ width: '100%', boxSizing: 'border-box', marginTop: 5, padding: '10px 12px', background: '#0d0d0d', color: '#eee', border: '1px solid #2a2a2a', borderRadius: 10, fontSize: 14 }}
+                />
+              </div>
+            ))}
+            {addError && <p style={{ color: '#f88', fontSize: 13, margin: '4px 0 0' }}>{addError}</p>}
+            <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+              <button
+                onClick={addClient}
+                disabled={saving || newClient.name.trim().length < 2 || !newClient.email.trim()}
+                style={{ ...s.googleBtn, width: 'auto', flex: 1, opacity: saving || newClient.name.trim().length < 2 || !newClient.email.trim() ? 0.5 : 1 }}
+              >
+                {saving ? 'Adding…' : 'Add client'}
+              </button>
+              <button onClick={() => setShowAddClient(false)} style={s.signOutBtn}>Cancel</button>
+            </div>
           </div>
         </div>
       )}
