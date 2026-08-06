@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Check } from 'lucide-react'
 
@@ -64,10 +65,14 @@ const tiers = [
   },
 ]
 
+// Annual = 10x the monthly rate, i.e. two months free. Kept as explicit
+// numbers rather than computed at render so the discount can be tuned per plan.
 const monthlyPlans = [
   {
     name: 'Basic',
     price: '$30',
+    annual: '$300',
+    monthlyNum: 30,
     blurb: 'Essential care for a simple website that is already live.',
     features: [
       'Website monitoring',
@@ -81,6 +86,8 @@ const monthlyPlans = [
   {
     name: 'Pro',
     price: '$79',
+    annual: '$790',
+    monthlyNum: 79,
     blurb: 'Ongoing improvements and faster support for a growing business.',
     features: [
       'Everything in Basic',
@@ -94,6 +101,8 @@ const monthlyPlans = [
   {
     name: 'Ultra',
     price: '$149',
+    annual: '$1,490',
+    monthlyNum: 149,
     blurb: 'Hands-on optimization for websites with active lead generation.',
     features: [
       'Everything in Pro',
@@ -106,7 +115,20 @@ const monthlyPlans = [
   },
 ]
 
+// Services quoted per engagement rather than sold as a package. Ranges are
+// starting points so a prospect can self-qualify before the call.
+const serviceRates = [
+  { name: 'Advertising & paid media', rate: 'from $400/mo', note: 'Management only — ad spend is paid to the platforms directly, in your name.' },
+  { name: 'Marketing & SEO', rate: 'from $350/mo', note: 'Local SEO, Google Business, content and reviews. Compounds; needs a few months.' },
+  { name: 'Branding & creative', rate: 'from $400', note: 'Logo, identity, photo direction and the copy that carries it.' },
+  { name: 'Apps & App Store launch', rate: 'from $1,200', note: 'Packaging an existing site starts lower than a build from scratch.' },
+  { name: 'AI automations', rate: 'from $1,500', note: 'AI receptionist, instant follow-up, booking and review automation.' },
+  { name: 'AI infrastructure', rate: 'Quoted', note: 'Assistants on your data, pipelines and integrations. Scoped per project.' },
+]
+
 export default function Pricing() {
+  const [annual, setAnnual] = useState(false)
+
   return (
     <section id="pricing" className="section-padding bg-[#0c0c0c]">
       <div className="container-max">
@@ -182,8 +204,25 @@ export default function Pricing() {
           <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[#c9a84c]">Monthly care</p>
           <h3 className="text-3xl font-black text-white sm:text-4xl">Keep your website working after launch.</h3>
           <p className="mx-auto mt-4 max-w-xl text-gray-400">
-            Choose ongoing care only if you need it. Plans are month-to-month; major redesigns and services registered for your business are separate.
+            Choose ongoing care only if you need it. Cancel any time; major redesigns and services registered for your business are separate.
           </p>
+
+          <div className="mt-7 inline-flex rounded-full border border-white/10 bg-white/[0.03] p-1">
+            <button
+              type="button"
+              onClick={() => setAnnual(false)}
+              className={`rounded-full px-5 py-2 text-sm font-semibold transition-all ${!annual ? 'gold-gradient text-black' : 'text-gray-400 hover:text-white'}`}
+            >
+              Monthly
+            </button>
+            <button
+              type="button"
+              onClick={() => setAnnual(true)}
+              className={`rounded-full px-5 py-2 text-sm font-semibold transition-all ${annual ? 'gold-gradient text-black' : 'text-gray-400 hover:text-white'}`}
+            >
+              Annual <span className={annual ? 'text-black/70' : 'text-[#c9a84c]'}>&middot; 2 months free</span>
+            </button>
+          </div>
         </div>
 
         <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-3">
@@ -206,10 +245,15 @@ export default function Pricing() {
                 </span>
               )}
               <h4 className="text-lg font-bold text-white">{plan.name}</h4>
-              <div className="mb-4 mt-3 flex items-baseline gap-1">
-                <span className="gold-text text-3xl font-black">{plan.price}</span>
-                <span className="text-sm text-gray-500">/month</span>
+              <div className="mb-1 mt-3 flex items-baseline gap-1">
+                <span className="gold-text text-3xl font-black">{annual ? plan.annual : plan.price}</span>
+                <span className="text-sm text-gray-500">{annual ? '/year' : '/month'}</span>
               </div>
+              <p className="mb-4 text-xs text-gray-500">
+                {annual
+                  ? `Works out to $${Math.round(plan.monthlyNum * 10 / 12)}/mo \u00B7 you save $${(plan.monthlyNum * 2).toLocaleString()}`
+                  : 'Billed monthly, cancel any time'}
+              </p>
               <p className="mb-6 text-sm leading-relaxed text-gray-400">{plan.blurb}</p>
 
               <ul className="mb-8 flex-1 space-y-3">
@@ -235,6 +279,33 @@ export default function Pricing() {
               </a>
             </motion.div>
           ))}
+        </div>
+
+        {/* Everything not sold as a fixed package. Starting points, so a prospect
+            can self-qualify before booking a call. */}
+        <div className="mx-auto mt-16 max-w-5xl">
+          <div className="mb-6 text-center">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[#c9a84c]">Everything else</p>
+            <h3 className="text-2xl font-black text-white sm:text-3xl">Other services, quoted per project.</h3>
+            <p className="mx-auto mt-3 max-w-xl text-sm text-gray-400">
+              These depend too much on your market to sell as a fixed package. Here is where they start, so you know
+              before you book a call.
+            </p>
+          </div>
+          <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02]">
+            {serviceRates.map((item, i) => (
+              <div
+                key={item.name}
+                className={`flex flex-col gap-1 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6 ${i > 0 ? 'border-t border-white/[0.06]' : ''}`}
+              >
+                <div className="sm:flex-1">
+                  <p className="font-semibold text-white">{item.name}</p>
+                  <p className="mt-0.5 text-sm leading-relaxed text-gray-500">{item.note}</p>
+                </div>
+                <span className="shrink-0 font-bold text-[#c9a84c]">{item.rate}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="mx-auto mt-8 grid max-w-5xl gap-4 rounded-2xl border border-white/10 bg-black/30 p-5 text-sm text-gray-400 sm:grid-cols-2 lg:grid-cols-4">

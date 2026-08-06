@@ -65,6 +65,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     else if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw)) update.follow_up_at = raw
     else return NextResponse.json({ error: 'Invalid follow-up date.' }, { status: 400 })
   }
+  // Website correction. The scrape that produced these leads sometimes misses a
+  // site that exists, and "no website" drives both the tier and the pitch — so
+  // it has to be fixable the moment it's spotted on the Maps listing.
+  if (body && 'website' in body) {
+    const raw = body.website
+    if (raw === '' || raw === null) update.website = null
+    else if (typeof raw === 'string' && raw.trim().length <= 500) {
+      const trimmed = raw.trim()
+      update.website = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+      // A lead with a website is no longer the "no site" tier.
+      update.priority = '3 - Has real site'
+    } else return NextResponse.json({ error: 'Invalid website.' }, { status: 400 })
+  }
+
   // Payment fields — same "only when sent" rule so saving notes can't wipe money.
   for (const key of ['deposit_paid_on', 'balance_paid_on', 'next_invoice_on'] as const) {
     if (!(key in body)) continue
