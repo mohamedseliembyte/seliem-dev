@@ -14,3 +14,6 @@ next-env.d.ts
 # Claude Code settings
 .claude/
 .env*
+
+# Local graphify knowledge-graph cache (generated, machine-specific)
+graphify-out/

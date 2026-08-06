@@ -24,6 +24,9 @@ type Lead = {
   goals: string | null
   message: string
   domain_status: string | null
+  project_status?: string | null
+  paused_at?: string | null
+  paused_reason?: string | null
   source: string | null
   status: string
   notes: string | null
@@ -963,6 +966,41 @@ export default function AdminPage() {
                 {selected.goals && <Field label="Goals" value={selected.goals} />}
                 <Field label="Domain" value={DOMAIN_LABELS[selected.domain_status ?? 'unknown'] ?? 'Unknown'} />
                 <Field label="Source" value={selected.source ?? 'website_form'} />
+
+                {/* Project suspension — advisory kill switch for non-payment.
+                    Nothing is deleted, so resuming is instant once they pay. */}
+                <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid #222' }}>
+                  <div style={s.fieldLabel}>Project</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: selected.project_status === 'paused' ? '#ffb4a8' : '#7bd99b' }}>
+                      {selected.project_status === 'paused' ? '\u25CF Paused' : '\u25CF Active'}
+                    </span>
+                    <button
+                      disabled={saving}
+                      onClick={() => {
+                        const pausing = selected.project_status !== 'paused'
+                        if (pausing && !window.confirm(`Pause ${selected.project_name || selected.name}'s project?\n\nTheir site will show a suspension notice. Nothing is deleted — resuming is instant.`)) return
+                        updateLead(selected.id, pausing
+                          ? { project_status: 'paused', paused_reason: 'Non-payment' }
+                          : { project_status: 'active' })
+                      }}
+                      style={{
+                        padding: '7px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                        border: '1px solid ' + (selected.project_status === 'paused' ? '#2f6b45' : '#6b2f2f'),
+                        background: selected.project_status === 'paused' ? 'rgba(74,222,128,.12)' : 'rgba(255,120,100,.12)',
+                        color: selected.project_status === 'paused' ? '#8fe0ac' : '#ffb4a8',
+                      }}
+                    >
+                      {selected.project_status === 'paused' ? 'Resume project' : 'Pause project'}
+                    </button>
+                  </div>
+                  {selected.project_status === 'paused' && selected.paused_at && (
+                    <p style={{ margin: '8px 0 0', fontSize: 12, color: '#c8a86a' }}>
+                      Paused {new Date(selected.paused_at).toLocaleDateString()}
+                      {selected.paused_reason ? ` \u00B7 ${selected.paused_reason}` : ''}
+                    </p>
+                  )}
+                </div>
                 <Field label="Received" value={new Date(selected.created_at).toLocaleString()} />
 
                 {/* Message */}

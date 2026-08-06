@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
+import { sendTelegramMessage } from '@/lib/telegram'
 
 // Comma-separated list of Google emails allowed into the admin.
 function allowedAdmins(): string[] {
@@ -140,12 +141,38 @@ export async function PATCH(req: NextRequest) {
     updates.read_at = body.read ? new Date().toISOString() : null
   }
 
+  // Project suspension. Pausing is advisory — it records the decision, shows the
+  // client a notice, and flips what a delivered site sees from /api/project-status.
+  // Nothing is deleted, so resuming is instant the moment they pay.
+  let suspensionChange: 'paused' | 'active' | null = null
+  if (body.project_status !== undefined) {
+    const next = body.project_status
+    if (next !== 'active' && next !== 'paused') {
+      return NextResponse.json({ error: 'project_status must be active or paused.' }, { status: 400 })
+    }
+    updates.project_status = next
+    updates.paused_at = next === 'paused' ? new Date().toISOString() : null
+    updates.paused_reason =
+      next === 'paused' ? (typeof body.paused_reason === 'string' ? body.paused_reason.slice(0, 300) : 'Non-payment') : null
+    suspensionChange = next
+  }
+
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
   }
 
   const { error } = await supabase.from('leads').update(updates).eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  if (suspensionChange) {
+    const { data: lead } = await supabase.from('leads').select('name, project_name').eq('id', id).maybeSingle()
+    const label = lead?.project_name || lead?.name || 'a project'
+    await sendTelegramMessage(
+      suspensionChange === 'paused'
+        ? `⏸️ <b>Project paused</b>\n\n${label}\nReason: ${updates.paused_reason}`
+        : `▶️ <b>Project resumed</b>\n\n${label} is live again.`,
+    ).catch(() => {})
+  }
 
   return NextResponse.json({ success: true })
 }
