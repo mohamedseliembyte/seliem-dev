@@ -127,7 +127,9 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
 }
 // Project options track the service catalogue, so adding a service adds an
 // option here automatically. "Other" falls back to free text for one-offs.
+const HELP_ME = '🤖 Help me figure it out…'
 const PROJECT_OPTIONS = [
+  HELP_ME,
   ...services.map((service) => service.name),
   'Website + booking',
   'Care plan only',
@@ -164,6 +166,12 @@ export default function AdminPage() {
   const [showAddClient, setShowAddClient] = useState(false)
   const [newClient, setNewClient] = useState({ name: '', email: '', phone: '', business_name: '', project_name: '' })
   const [addError, setAddError] = useState('')
+  // Scope helper: describe the job in plain words, get a project label, a
+  // contract-ready scope and a price range back. Suggestions only — nothing is
+  // saved until the fields are accepted.
+  const [helpText, setHelpText] = useState('')
+  const [helpBusy, setHelpBusy] = useState(false)
+  const [helpResult, setHelpResult] = useState<{ project: string; scope: string; priceLow: number; priceHigh: number; questions: string[] } | null>(null)
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [datePreset, setDatePreset] = useState<DateRangePreset>('all')
@@ -248,6 +256,22 @@ export default function AdminPage() {
     setSaving(false)
   }
 
+  const askScopeHelper = async () => {
+    if (!session || helpText.trim().length < 10 || helpBusy) return
+    setHelpBusy(true); setAddError(''); setHelpResult(null)
+    try {
+      const res = await fetch('/api/admin/scope-helper', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: helpText.trim() }),
+      })
+      const payload = await res.json()
+      if (!res.ok) setAddError(payload.error || 'Could not draft that.')
+      else setHelpResult(payload)
+    } catch { setAddError('Could not draft that.') }
+    setHelpBusy(false)
+  }
+
   const addClient = async () => {
     if (!session) return
     setAddError(''); setSaving(true)
@@ -314,6 +338,10 @@ export default function AdminPage() {
   const [agPrice, setAgPrice] = useState('')
   const [agBusy, setAgBusy] = useState(false)
   const [viewAg, setViewAg] = useState<string | null>(null)
+  // Built the moment an agreement exists, so the next step — actually sending
+  // it — is a copy and a paste rather than writing the message from scratch.
+  const [sendMsg, setSendMsg] = useState('')
+  const [sendCopied, setSendCopied] = useState(false)
 
   const createAgreement = async (leadId: string) => {
     if (!session || !agScope.trim() || !Number(agPrice) || agBusy) return
@@ -325,7 +353,23 @@ export default function AdminPage() {
         body: JSON.stringify({ lead_id: leadId, scope: agScope.trim(), price: Number(agPrice) }),
       })
       const data = await res.json()
-      if (data.agreement) { setAgreements((a) => [data.agreement, ...a]); setAgScope(''); setAgPrice('') }
+      if (data.agreement) {
+        setAgreements((a) => [data.agreement, ...a])
+        const lead = leads.find((l) => l.id === leadId)
+        const price = Number(agPrice)
+        const half = Math.round(price / 2)
+        setSendMsg(
+          `Hi ${(lead?.name || 'there').split(' ')[0]},\n\n` +
+          `Here's the agreement for ${lead?.project_name || 'your project'}.\n\n` +
+          `What we're doing:\n${agScope.trim()}\n\n` +
+          `Price: $${price.toLocaleString()} total — $${half.toLocaleString()} to start, ` +
+          `the rest before it goes live.\n\n` +
+          `Review and sign here: https://seliem.dev/account\n\n` +
+          `Any questions, just reply.\n— Mohamed`,
+        )
+        setSendCopied(false)
+        setAgScope(''); setAgPrice('')
+      }
     } catch { /* ignore */ }
     setAgBusy(false)
   }
@@ -1145,6 +1189,30 @@ export default function AdminPage() {
                       </button>
                     </div>
                     <p style={{ color: '#666', fontSize: 11, marginTop: 6 }}>The AI drafts a professional agreement; the client signs it on their account.</p>
+
+                    {sendMsg && (
+                      <div style={{ marginTop: 14, padding: 14, borderRadius: 12, border: '1px solid rgba(201,168,76,0.35)', background: 'rgba(201,168,76,0.06)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
+                          <strong style={{ fontSize: 13, color: GOLD }}>Send this to them</strong>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                              onClick={() => { navigator.clipboard.writeText(sendMsg); setSendCopied(true); setTimeout(() => setSendCopied(false), 1500) }}
+                              style={{ ...s.actionBtn, background: GOLD, color: '#000', border: 'none', cursor: 'pointer', padding: '6px 12px', fontSize: 12 }}
+                            >
+                              {sendCopied ? '✓ Copied' : 'Copy'}
+                            </button>
+                            <button onClick={() => setSendMsg('')} style={{ ...s.signOutBtn, padding: '6px 10px', fontSize: 12 }}>Dismiss</button>
+                          </div>
+                        </div>
+                        <textarea
+                          value={sendMsg}
+                          onChange={(e) => setSendMsg(e.target.value)}
+                          rows={11}
+                          style={{ width: '100%', boxSizing: 'border-box', background: '#0d0d0d', color: '#ddd', border: '1px solid #2a2a2a', borderRadius: 10, padding: 12, fontSize: 13, lineHeight: 1.55, resize: 'vertical' }}
+                        />
+                        <p style={{ color: '#666', fontSize: 11, margin: '6px 0 0' }}>Edit it if you want — then text or email it. Their sign-in email must match the one on this client.</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1305,7 +1373,48 @@ export default function AdminPage() {
                   <option key={option} value={option} style={{ background: '#141414' }}>{option}</option>
                 ))}
               </select>
-              {newClient.project_name !== '' && !PROJECT_OPTIONS.includes(newClient.project_name) && (
+              {newClient.project_name === HELP_ME && (
+                <div style={{ marginTop: 10, padding: 12, borderRadius: 10, border: '1px solid rgba(201,168,76,0.3)', background: 'rgba(201,168,76,0.05)' }}>
+                  <div style={s.fieldLabel}>Describe it in your own words</div>
+                  <textarea
+                    value={helpText}
+                    onChange={(e) => setHelpText(e.target.value)}
+                    rows={3}
+                    placeholder="e.g. friend has a website already, wants it on the App Store and connected to his domain"
+                    style={{ width: '100%', boxSizing: 'border-box', marginTop: 5, padding: '10px 12px', background: '#0d0d0d', color: '#eee', border: '1px solid #2a2a2a', borderRadius: 10, fontSize: 13, resize: 'vertical' }}
+                  />
+                  <button
+                    onClick={askScopeHelper}
+                    disabled={helpBusy || helpText.trim().length < 10}
+                    style={{ ...s.actionBtn, marginTop: 8, background: GOLD, color: '#000', border: 'none', cursor: 'pointer', opacity: helpBusy || helpText.trim().length < 10 ? 0.4 : 1 }}
+                  >
+                    {helpBusy ? 'Thinking…' : '✨ Ask Sage'}
+                  </button>
+
+                  {helpResult && (
+                    <div style={{ marginTop: 12, fontSize: 13, color: '#ddd' }}>
+                      <p style={{ margin: '0 0 4px' }}><strong style={{ color: GOLD }}>Project:</strong> {helpResult.project}</p>
+                      <p style={{ margin: '0 0 6px' }}><strong style={{ color: GOLD }}>Suggested price:</strong> ${helpResult.priceLow.toLocaleString()} – ${helpResult.priceHigh.toLocaleString()}</p>
+                      <div style={{ whiteSpace: 'pre-wrap', color: '#bbb', lineHeight: 1.5, fontSize: 12, borderLeft: '2px solid #333', paddingLeft: 10 }}>{helpResult.scope}</div>
+                      {helpResult.questions.length > 0 && (
+                        <div style={{ marginTop: 8 }}>
+                          <strong style={{ color: '#c8a86a', fontSize: 12 }}>Confirm before quoting:</strong>
+                          <ul style={{ margin: '4px 0 0', paddingLeft: 18, color: '#c8a86a', fontSize: 12, lineHeight: 1.5 }}>
+                            {helpResult.questions.map((q) => <li key={q}>{q}</li>)}
+                          </ul>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => { setNewClient({ ...newClient, project_name: helpResult.project }); setHelpResult(null); setHelpText('') }}
+                        style={{ ...s.actionBtn, marginTop: 10, cursor: 'pointer' }}
+                      >
+                        Use “{helpResult.project}”
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              {newClient.project_name !== '' && newClient.project_name !== HELP_ME && !PROJECT_OPTIONS.includes(newClient.project_name) && (
                 <input
                   autoFocus
                   value={newClient.project_name}
@@ -1319,7 +1428,7 @@ export default function AdminPage() {
             <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
               <button
                 onClick={addClient}
-                disabled={saving || newClient.name.trim().length < 2 || !newClient.email.trim()}
+                disabled={saving || newClient.name.trim().length < 2 || !newClient.email.trim() || newClient.project_name === HELP_ME}
                 style={{ ...s.googleBtn, width: 'auto', flex: 1, opacity: saving || newClient.name.trim().length < 2 || !newClient.email.trim() ? 0.5 : 1 }}
               >
                 {saving ? 'Adding…' : 'Add client'}
