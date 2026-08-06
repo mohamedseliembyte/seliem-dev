@@ -80,7 +80,7 @@ export function buildDefaultPlaybook(lead: LeadFacts): Pitch {
   const { pain, dream } = PAIN_LINES.find(([re]) => re.test(lead.niche || ''))?.[1] || DEFAULT_PAIN
 
   const siteAngle = noSite
-    ? `Right now ${business} has no real website. Not a bad one — none. Every single day, ${pain}.`
+    ? `I went looking for your website and couldn’t find one — if you’ve got one, say so now and I’ll stop. [pause] But here’s the thing: if I couldn’t find it, neither can your customers. Every single day, ${pain}.`
     : `I looked at what ${business} has online. It exists — but it’s not doing its job. ${pain[0].toUpperCase()}${pain.slice(1)}.`
 
   const callScript = `1. GATEKEEPER / DECISION-MAKER CHECK
@@ -130,7 +130,7 @@ CLIENT RESPONSE:
     },
     {
       clientSays: 'We already have a website / a guy',
-      response: `"Love that — means you already believe in this. So here’s a free second opinion: open ${previewUrl} next to your current site. [pause] If yours wins, fire me before you ever hire me. If mine wins... that gap is what customers see every day. Which one would YOU call?"`,
+      response: `"Good — then my search missed it, and that’s worth knowing on its own: I looked and couldn’t find you. [pause] So here’s a free second opinion. Open ${previewUrl} next to your current site. If yours wins, fire me before you ever hire me. If mine wins — that gap is what your customers see every day. Which one would YOU call?"`,
       returnTo: 'Stage 4 — discovery on what their current site actually converts.',
       nextStep: 'Side-by-side comparison on the spot; book the call if the preview wins.',
     },
