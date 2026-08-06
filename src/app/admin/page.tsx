@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { services } from '@/data/services'
 import type { Session } from '@supabase/supabase-js'
 import { getSupabaseBrowser } from '@/lib/supabase-client'
 import { googlePopupSignIn, exchangeGoogleToken } from '@/lib/google-auth'
@@ -124,6 +125,15 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   won:       { bg: '#1a2a1a', text: '#4d4' },
   lost:      { bg: '#2a1414', text: '#d66' },
 }
+// Project options track the service catalogue, so adding a service adds an
+// option here automatically. "Other" falls back to free text for one-offs.
+const PROJECT_OPTIONS = [
+  ...services.map((service) => service.name),
+  'Website + booking',
+  'Care plan only',
+  'Other',
+]
+
 const DOMAIN_LABELS: Record<string, string> = {
   has: '🟢 Has domain',
   wants: '🟡 Wants one',
@@ -1272,7 +1282,6 @@ export default function AdminPage() {
               ['email', 'Email *', 'jordan@example.com'],
               ['phone', 'Phone', '(555) 000-0000'],
               ['business_name', 'Business name', 'Reyes Auto Body'],
-              ['project_name', 'Project', 'Website + booking'],
             ] as const).map(([key, label, placeholder]) => (
               <div key={key} style={{ marginBottom: 12 }}>
                 <div style={s.fieldLabel}>{label}</div>
@@ -1284,6 +1293,28 @@ export default function AdminPage() {
                 />
               </div>
             ))}
+            <div style={{ marginBottom: 12 }}>
+              <div style={s.fieldLabel}>Project</div>
+              <select
+                value={PROJECT_OPTIONS.includes(newClient.project_name) || newClient.project_name === '' ? newClient.project_name : 'Other'}
+                onChange={(e) => setNewClient({ ...newClient, project_name: e.target.value === 'Other' ? '' : e.target.value })}
+                style={{ width: '100%', boxSizing: 'border-box', marginTop: 5, padding: '10px 12px', background: '#0d0d0d', color: '#eee', border: '1px solid #2a2a2a', borderRadius: 10, fontSize: 14, cursor: 'pointer' }}
+              >
+                <option value="">Select a project…</option>
+                {PROJECT_OPTIONS.map((option) => (
+                  <option key={option} value={option} style={{ background: '#141414' }}>{option}</option>
+                ))}
+              </select>
+              {newClient.project_name !== '' && !PROJECT_OPTIONS.includes(newClient.project_name) && (
+                <input
+                  autoFocus
+                  value={newClient.project_name}
+                  onChange={(e) => setNewClient({ ...newClient, project_name: e.target.value })}
+                  placeholder="Describe the project"
+                  style={{ width: '100%', boxSizing: 'border-box', marginTop: 8, padding: '10px 12px', background: '#0d0d0d', color: '#eee', border: '1px solid #2a2a2a', borderRadius: 10, fontSize: 14 }}
+                />
+              )}
+            </div>
             {addError && <p style={{ color: '#f88', fontSize: 13, margin: '4px 0 0' }}>{addError}</p>}
             <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
               <button
