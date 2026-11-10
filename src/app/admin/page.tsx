@@ -62,7 +62,10 @@ type Payment = {
   status: string
   created_at: string
   paid_at: string | null
+  paid_via?: string | null
 }
+
+type CareSub = { id: string; lead_id: string | null; plan: string | null; billing_interval: string | null; amount: number | null; status: string; current_period_end: string | null; cancel_at_period_end: boolean }
 
 type Agreement = {
   id: string
@@ -111,6 +114,7 @@ type Invoice = {
   due_date: string | null
   created_at: string
   paid_at: string | null
+  paid_via?: string | null
 }
 
 // Your PayPal.Me handle (set NEXT_PUBLIC_PAYPAL_HANDLE in env)
@@ -154,6 +158,7 @@ export default function AdminPage() {
   const [payments, setPayments] = useState<Payment[]>([])
   const [agreements, setAgreements] = useState<Agreement[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [careSubs, setCareSubs] = useState<CareSub[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [error, setError] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
@@ -192,6 +197,7 @@ export default function AdminPage() {
       setConversations(data.conversations ?? [])
       setMessages(data.messages ?? [])
       setPayments(data.payments ?? [])
+      setCareSubs(data.careSubscriptions ?? [])
       setAgreements(data.agreements ?? [])
       // Tasks + invoices live on separate routes
       try {
@@ -1131,6 +1137,8 @@ export default function AdminPage() {
                         <div style={{ color: '#eee', fontSize: 14 }}>${Number(p.amount).toLocaleString()} <span style={{ color: '#888', fontSize: 12 }}>· {p.description}</span></div>
                         <div style={{ marginTop: 4 }}>
                           <span style={{ ...s.smallBadge, background: p.status === 'paid' ? '#1a2a1a' : p.status === 'canceled' ? '#2a1414' : '#2a2a14', color: p.status === 'paid' ? '#4d4' : p.status === 'canceled' ? '#d66' : GOLD }}>{p.status}</span>
+                          {p.paid_via === 'stripe' && <span style={{ ...s.smallBadge, marginLeft: 6, background: '#14142a', color: '#99f' }}>card</span>}
+                          {p.paid_via === 'stripe_refunded' && <span style={{ ...s.smallBadge, marginLeft: 6, background: '#2a1414', color: '#d66' }}>refunded</span>}
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: 6 }}>
@@ -1152,6 +1160,22 @@ export default function AdminPage() {
                   </div>
                   {!PAYPAL_HANDLE && <p style={{ color: '#a66', fontSize: 11, marginTop: 6 }}>⚠️ Set your PayPal.Me handle to generate pay links.</p>}
                 </div>
+
+                {/* ── Care plan (Stripe subscription; clients start and manage it from /account) ── */}
+                {careSubs.some((c) => c.lead_id === selected.id) && (
+                  <div style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid #222' }}>
+                    <div style={{ ...s.fieldLabel, marginBottom: 10 }}>🔁 Care plan</div>
+                    {careSubs.filter((c) => c.lead_id === selected.id).map((c) => (
+                      <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#141414', border: '1px solid #222', borderRadius: 10, marginBottom: 8 }}>
+                        <span style={{ color: '#eee', fontSize: 14 }}>
+                          {c.plan ? c.plan[0].toUpperCase() + c.plan.slice(1) : 'Care'}
+                          <span style={{ color: '#888', fontSize: 12 }}> · ${Number(c.amount ?? 0).toLocaleString()}/{c.billing_interval ?? 'month'}{c.current_period_end ? ` · ${c.cancel_at_period_end ? 'ends' : 'renews'} ${new Date(c.current_period_end).toLocaleDateString()}` : ''}</span>
+                        </span>
+                        <span style={{ ...s.smallBadge, background: c.status === 'active' ? '#1a2a1a' : '#2a2a14', color: c.status === 'active' ? '#4d4' : GOLD }}>{c.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* ── Agreements ── */}
                 <div style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid #222' }}>
@@ -1228,7 +1252,7 @@ export default function AdminPage() {
                           ${Number(inv.total).toLocaleString()}
                           <span style={{ color: '#888', fontSize: 12 }}> · {(inv.items?.[0]?.description ?? '').slice(0, 30)}{(inv.items?.length ?? 0) > 1 ? ` +${inv.items.length - 1} more` : ''}</span>
                         </span>
-                        <span style={{ ...s.smallBadge, background: inv.status === 'paid' ? '#1a2a1a' : inv.status === 'void' ? '#2a1414' : '#2a2a14', color: inv.status === 'paid' ? '#4d4' : inv.status === 'void' ? '#d66' : GOLD }}>{inv.status}</span>
+                        <span style={{ ...s.smallBadge, background: inv.status === 'paid' ? '#1a2a1a' : inv.status === 'void' ? '#2a1414' : '#2a2a14', color: inv.status === 'paid' ? '#4d4' : inv.status === 'void' ? '#d66' : GOLD }}>{inv.status}{inv.paid_via === 'stripe' ? ' · card' : inv.paid_via === 'stripe_refunded' ? ' · refunded' : ''}</span>
                       </div>
                       <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginTop: 6 }}>
                         <button onClick={() => downloadInvoicePdf({ ...inv, clientName: selected.name, clientEmail: selected.email })} style={{ background: 'transparent', border: 'none', color: GOLD, fontSize: 12, cursor: 'pointer', padding: 0 }}>⬇ Download PDF</button>

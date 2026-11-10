@@ -25,10 +25,22 @@ type Convo = { id: string; status: string; summary: string | null; created_at: s
 type Msg = { conversation_id: string; role: string; content: string; created_at: string }
 type Payment = { id: string; lead_id: string; description: string; amount: number; status: string; created_at: string }
 type Agreement = { id: string; lead_id: string; scope: string; price: number; content: string; status: string; created_at: string; accepted_at: string | null }
+type CareSub = { id: string; lead_id: string | null; plan: string | null; billing_interval: string | null; amount: number | null; status: string; current_period_end: string | null; cancel_at_period_end: boolean }
 type Invoice = { id: string; invoice_no: number | null; lead_id: string | null; items: { description: string; amount: number }[]; total: number; currency: string | null; status: string; notes: string | null; due_date: string | null; created_at: string; paid_at: string | null }
 
 const GOLD = '#c9a84c'
 const PAYPAL_HANDLE = process.env.NEXT_PUBLIC_PAYPAL_HANDLE || ''
+// Mirrors the public pricing (components/sections/Pricing.tsx). The amount
+// actually charged comes from the Stripe price, looked up server-side.
+const CARE_PLANS = [
+  { key: 'basic', name: 'Basic', month: 30, year: 300, blurb: 'Monitoring, updates, 30 min of edits' },
+  { key: 'pro', name: 'Pro', month: 79, year: 790, blurb: 'Up to 2 hours of edits, analytics summary' },
+  { key: 'ultra', name: 'Ultra', month: 149, year: 1490, blurb: 'Up to 5 hours of edits, conversion work' },
+] as const
+const LIVE_SUB = ['active', 'trialing', 'past_due', 'unpaid', 'incomplete']
+const SUB_LABEL: Record<string, string> = {
+  active: 'Active', trialing: 'Trial', past_due: 'Payment failed — retrying', unpaid: 'Unpaid', incomplete: 'Awaiting payment', canceled: 'Ended', incomplete_expired: 'Expired', paused: 'Paused',
+}
 const STATUS_LABEL: Record<string, string> = {
   new: 'Received', contacted: 'In touch', qualified: 'In discussion', won: 'Active client', lost: 'Closed',
 }
@@ -37,9 +49,28 @@ export default function AccountPage() {
   const supabase = getSupabaseBrowser()
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState<Session | null>(null)
-  const [data, setData] = useState<{ leads: Lead[]; conversations: Convo[]; messages: Msg[]; payments?: Payment[]; agreements?: Agreement[]; invoices?: Invoice[] } | null>(null)
+  const [data, setData] = useState<{ leads: Lead[]; conversations: Convo[]; messages: Msg[]; payments?: Payment[]; agreements?: Agreement[]; invoices?: Invoice[]; careSubscriptions?: CareSub[]; billing?: { stripe: boolean } } | null>(null)
   const [signing, setSigning] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [paying, setPaying] = useState<string | null>(null)
+  const [billingError, setBillingError] = useState<string | null>(null)
+  // Back from Stripe Checkout. The webhook records the payment, so "success"
+  // here only means "submitted" — the paid badge appears once Stripe confirms.
+  // (Read lazily: the first render is the loading screen, so no hydration gap.)
+  const [checkoutNotice, setCheckoutNotice] = useState<'success' | 'cancelled' | null>(() => {
+    if (typeof window === 'undefined') return null
+    const c = new URL(window.location.href).searchParams.get('checkout')
+    return c === 'success' || c === 'cancelled' ? c : null
+  })
+  const [careInterval, setCareInterval] = useState<'month' | 'year'>('month')
+
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (url.searchParams.has('checkout')) {
+      url.searchParams.delete('checkout')
+      window.history.replaceState({}, '', url.pathname + url.search)
+    }
+  }, [])
 
   const load = useCallback(async (token: string) => {
     try {
@@ -47,6 +78,26 @@ export default function AccountPage() {
       if (res.ok) setData(await res.json())
     } catch { /* ignore */ }
   }, [])
+
+  // Redirects to Stripe-hosted Checkout or the Customer Portal.
+  const goToStripe = async (endpoint: string, body: Record<string, string> | null, key: string) => {
+    if (!session) return
+    setPaying(key); setBillingError(null)
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body ?? {}),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (res.ok && json.url) { window.location.assign(json.url); return }
+      setBillingError(json.error || 'Something went wrong. Please try again.')
+    } catch { setBillingError('Network error. Please try again.') }
+    setPaying(null)
+  }
+  const payByCard = (kind: 'invoice' | 'payment', id: string) => goToStripe('/api/account/checkout', { kind, id }, `${kind}:${id}`)
+  const startCarePlan = (leadId: string, plan: string) => goToStripe('/api/account/checkout', { kind: 'care', lead_id: leadId, plan, interval: careInterval }, `care:${plan}`)
+  const openPortal = () => goToStripe('/api/account/billing-portal', null, 'portal')
 
   const signAgreement = async (agreementId: string) => {
     if (!session) return
@@ -118,6 +169,11 @@ export default function AccountPage() {
   )
 
   const leads = data?.leads ?? []
+  const stripeOn = Boolean(data?.billing?.stripe)
+  const subs = data?.careSubscriptions ?? []
+  const liveSubs = subs.filter((x) => LIVE_SUB.includes(x.status))
+  // Care plans are offered once someone is an active client, on their latest project.
+  const clientLead = leads.find((l) => l.status === 'won') ?? null
   const convosFor = () => data?.conversations ?? []
   const msgsFor = (cid: string) => (data?.messages ?? []).filter((m) => m.conversation_id === cid)
   const userName = (session.user.user_metadata?.full_name as string) || (session.user.user_metadata?.name as string) || session.user.email?.split('@')[0] || 'there'
@@ -139,6 +195,21 @@ export default function AccountPage() {
           </div>
           <button onClick={signOut} className="shrink-0 rounded-lg border border-white/15 px-3 py-1.5 text-sm text-gray-400 transition hover:border-white/30 hover:text-white">Sign out</button>
         </div>
+
+        {checkoutNotice && (
+          <div className={`mb-6 flex items-start justify-between gap-3 rounded-2xl border p-4 text-sm ${checkoutNotice === 'success' ? 'border-green-500/30 bg-[#0f1a0f] text-green-300' : 'border-white/10 bg-[#141414] text-gray-400'}`}>
+            <span>{checkoutNotice === 'success'
+              ? 'Thank you — your payment went through. It can take a minute to show as paid here, and Stripe emails you a receipt.'
+              : 'Checkout was cancelled. Nothing was charged.'}</span>
+            <button onClick={() => setCheckoutNotice(null)} className="text-gray-500 hover:text-white" aria-label="Dismiss">✕</button>
+          </div>
+        )}
+        {billingError && (
+          <div className="mb-6 flex items-start justify-between gap-3 rounded-2xl border border-red-500/30 bg-[#1a0f0f] p-4 text-sm text-red-300">
+            <span>{billingError}</span>
+            <button onClick={() => setBillingError(null)} className="text-gray-500 hover:text-white" aria-label="Dismiss">✕</button>
+          </div>
+        )}
 
         {leads.length === 0 && convosFor().length === 0 ? (
           <div className="rounded-2xl border border-white/10 bg-[#141414] p-10 text-center">
@@ -229,9 +300,16 @@ export default function AccountPage() {
                         ))}
                       </div>
                       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                        {inv.status !== 'paid' && inv.status !== 'void' && PAYPAL_HANDLE && (
-                          <a href={`https://paypal.me/${PAYPAL_HANDLE}/${inv.total}`} target="_blank" rel="noreferrer" className="sheen flex-1 rounded-xl bg-gradient-to-r from-[#c9a84c] to-[#f5d485] py-3 text-center text-sm font-semibold text-black transition hover:brightness-105">
-                            Pay ${Number(inv.total).toLocaleString()}
+                        {inv.status === 'sent' && stripeOn && (
+                          <button onClick={() => payByCard('invoice', inv.id)} disabled={paying !== null} className="sheen flex-1 rounded-xl bg-gradient-to-r from-[#c9a84c] to-[#f5d485] py-3 text-center text-sm font-semibold text-black transition hover:brightness-105 disabled:opacity-50">
+                            {paying === `invoice:${inv.id}` ? 'Opening checkout…' : `Pay $${Number(inv.total).toLocaleString()}`}
+                          </button>
+                        )}
+                        {inv.status === 'sent' && PAYPAL_HANDLE && (
+                          <a href={`https://paypal.me/${PAYPAL_HANDLE}/${inv.total}`} target="_blank" rel="noreferrer" className={stripeOn
+                            ? 'rounded-xl border border-white/15 px-4 py-3 text-center text-sm font-semibold text-gray-300 transition hover:border-[#c9a84c]/50 hover:text-white'
+                            : 'sheen flex-1 rounded-xl bg-gradient-to-r from-[#c9a84c] to-[#f5d485] py-3 text-center text-sm font-semibold text-black transition hover:brightness-105'}>
+                            {stripeOn ? 'PayPal' : `Pay $${Number(inv.total).toLocaleString()}`}
                           </a>
                         )}
                         <button onClick={() => downloadInvoicePdf({ ...inv, clientName: userName, clientEmail: session.user.email })} className="rounded-xl border border-white/15 px-4 py-3 text-sm font-semibold text-gray-300 transition hover:border-[#c9a84c]/50 hover:text-white">
@@ -258,6 +336,13 @@ export default function AccountPage() {
                           <span className="rounded-full bg-[#1a2a1a] px-3 py-1 text-xs font-semibold text-green-400">✓ Paid</span>
                         ) : p.status === 'canceled' ? (
                           <span className="rounded-full bg-[#2a1414] px-3 py-1 text-xs font-semibold text-red-400">Canceled</span>
+                        ) : stripeOn ? (
+                          <div className="flex flex-col items-end gap-1.5">
+                            <button onClick={() => payByCard('payment', p.id)} disabled={paying !== null} className="sheen inline-block rounded-xl bg-gradient-to-r from-[#c9a84c] to-[#f5d485] px-4 py-2 text-sm font-semibold text-black transition hover:brightness-105 disabled:opacity-50">
+                              {paying === `payment:${p.id}` ? 'Opening…' : 'Pay now'}
+                            </button>
+                            {PAYPAL_HANDLE && <a href={`https://paypal.me/${PAYPAL_HANDLE}/${p.amount}`} target="_blank" rel="noreferrer" className="text-xs text-gray-500 underline-offset-2 hover:text-gray-300 hover:underline">or PayPal</a>}
+                          </div>
                         ) : PAYPAL_HANDLE ? (
                           <a
                             href={`https://paypal.me/${PAYPAL_HANDLE}/${p.amount}`}
@@ -274,6 +359,59 @@ export default function AccountPage() {
                     </div>
                   ))}
                 </div>
+              </Section>
+            )}
+
+            {/* Care plan */}
+            {stripeOn && (subs.length > 0 || clientLead) && (
+              <Section title="Your Care Plan" count={liveSubs.length}>
+                {subs.length > 0 && (
+                  <div className="space-y-3">
+                    {subs.map((sub) => (
+                      <div key={sub.id} className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#141414] p-5">
+                        <div>
+                          <div className="font-semibold text-white">{sub.plan ? sub.plan[0].toUpperCase() + sub.plan.slice(1) : 'Care'} plan</div>
+                          <div className="text-sm text-gray-400">
+                            {sub.amount != null && `$${Number(sub.amount).toLocaleString()}/${sub.billing_interval === 'year' ? 'year' : 'month'}`}
+                            {sub.current_period_end && LIVE_SUB.includes(sub.status) && (
+                              <> · {sub.cancel_at_period_end ? 'ends' : 'renews'} {new Date(sub.current_period_end).toLocaleDateString()}</>
+                            )}
+                          </div>
+                        </div>
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${sub.status === 'active' ? 'bg-[#1a2a1a] text-green-400' : LIVE_SUB.includes(sub.status) ? 'bg-[#2a2a14] text-[#c9a84c]' : 'bg-white/5 text-gray-500'}`}>
+                          {SUB_LABEL[sub.status] ?? sub.status}
+                        </span>
+                      </div>
+                    ))}
+                    <button onClick={openPortal} disabled={paying !== null} className="w-full rounded-xl border border-white/15 px-4 py-3 text-sm font-semibold text-gray-300 transition hover:border-[#c9a84c]/50 hover:text-white disabled:opacity-50">
+                      {paying === 'portal' ? 'Opening…' : 'Manage billing — card, plan, receipts'}
+                    </button>
+                  </div>
+                )}
+                {liveSubs.length === 0 && clientLead && (
+                  <div className={subs.length > 0 ? 'mt-6' : ''}>
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <p className="text-sm text-gray-400">Keep your site monitored, updated and improving. Cancel any time.</p>
+                      <div className="flex shrink-0 rounded-full border border-white/10 p-1 text-xs">
+                        {(['month', 'year'] as const).map((iv) => (
+                          <button key={iv} onClick={() => setCareInterval(iv)} className={`rounded-full px-3 py-1 font-semibold transition ${careInterval === iv ? 'bg-[#c9a84c] text-black' : 'text-gray-400 hover:text-white'}`}>
+                            {iv === 'month' ? 'Monthly' : 'Annual'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      {CARE_PLANS.map((plan) => (
+                        <button key={plan.key} onClick={() => startCarePlan(clientLead.id, plan.key)} disabled={paying !== null}
+                          className="rounded-2xl border border-white/10 bg-[#141414] p-4 text-left transition hover:border-[#c9a84c]/50 disabled:opacity-50">
+                          <div className="font-semibold text-white">{plan.name}</div>
+                          <div className="mt-1 text-xl font-bold gold-text">${plan[careInterval].toLocaleString()}<span className="text-xs font-normal text-gray-500">/{careInterval === 'month' ? 'mo' : 'yr'}</span></div>
+                          <div className="mt-2 text-xs text-gray-500">{paying === `care:${plan.key}` ? 'Opening checkout…' : plan.blurb}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </Section>
             )}
 

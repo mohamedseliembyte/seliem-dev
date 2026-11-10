@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from('invoices')
-    .select('id, invoice_no, lead_id, items, total, currency, status, notes, due_date, created_at, paid_at')
+    .select('*')
     .order('created_at', { ascending: false })
     .limit(500)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

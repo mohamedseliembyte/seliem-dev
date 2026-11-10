@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
+import { stripeEnabled } from '@/lib/stripe'
 
 // Returns the signed-in visitor's OWN inquiries + chats (matched by their
 // verified Google email). No admin allow-list — any authenticated user can
@@ -55,6 +56,7 @@ export async function GET(req: NextRequest) {
   let payments: unknown[] = []
   let agreements: unknown[] = []
   let invoices: unknown[] = []
+  let careSubscriptions: unknown[] = []
   if (leadIds.length > 0) {
     const { data: pays } = await supabase
       .from('payments')
@@ -78,6 +80,13 @@ export async function GET(req: NextRequest) {
       .in('status', ['sent', 'paid'])
       .order('created_at', { ascending: false })
     invoices = invs ?? []
+
+    const { data: subs } = await supabase
+      .from('care_subscriptions')
+      .select('id, lead_id, plan, billing_interval, amount, status, current_period_end, cancel_at_period_end')
+      .in('lead_id', leadIds)
+      .order('created_at', { ascending: false })
+    careSubscriptions = subs ?? []
   }
 
   return NextResponse.json({
@@ -88,5 +97,7 @@ export async function GET(req: NextRequest) {
     payments,
     agreements,
     invoices,
+    careSubscriptions,
+    billing: { stripe: stripeEnabled() },
   })
 }

@@ -100,7 +100,16 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Care-plan subscriptions mirrored from Stripe by the webhook. Optional: the
+  // table only exists once the Stripe migration has been applied.
+  const { data: careSubscriptions } = await supabase
+    .from('care_subscriptions')
+    .select('id, lead_id, plan, billing_interval, amount, status, current_period_end, cancel_at_period_end')
+    .order('created_at', { ascending: false })
+    .limit(500)
+
   return NextResponse.json({
+    careSubscriptions: careSubscriptions ?? [],
     leads: leads ?? [],
     conversations: conversations ?? [],
     messages,

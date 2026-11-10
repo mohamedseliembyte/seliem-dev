@@ -39,7 +39,8 @@ export async function runPaymentReminders() {
     if (!lead?.email) continue
 
     const first = (lead.name || 'there').split(' ')[0]
-    const payLink = handle ? `https://paypal.me/${handle}/${p.amount}` : 'https://seliem.dev/account'
+    // With Stripe on, send clients to their account to pay by card (PayPal is offered there too).
+    const payLink = !process.env.STRIPE_SECRET_KEY && handle ? `https://paypal.me/${handle}/${p.amount}` : 'https://seliem.dev/account'
     try {
       await resend.emails.send({
         from,
